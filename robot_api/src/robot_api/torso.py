@@ -30,6 +30,7 @@ class Torso(object):
             height: The height, in meters, to set the torso to. Values range
                 from Torso.MIN_HEIGHT (0.0) to Torso.MAX_HEIGHT(0.4).
         """
+        # Clip the height to our desired range.
         height = min(height, 0.4)
         height = max(height, 0.0)
 
