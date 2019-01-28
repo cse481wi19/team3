@@ -53,29 +53,16 @@ class Head(object):
             y: The y value of the point to look at.
             z: The z value of the point to look at.
         """
-        """
         # TODO: Create goal
-        goal = control_msgs.msg.FollowJointTrajectoryGoal()
-        # TODO: Fill out the goal (we recommend setting min_duration to 1 second)
-        goal.trajectory.joint_names.append(TILT_JOINT)
-        point = trajectory_msgs.msg.JointTrajectoryPoint()
-        point.positions.append(x)
-        point.positions.append(y)
-        point.positions.append(z)
-        point.time_from_start = rospy.Duration(1)
-        goal.trajectory.points.append(point)
-        # TODO: Send the goal
-        goal.trajectory.header.frame_id = frame_id
-        print(goal)
-        self._client2.send_goal(goal)
-        # TODO: Wait for result
-        self._client2.wait_for_result()#rospy.Duration(10))
-        """
         goal = control_msgs.msg.PointHeadGoal()
+        # TODO: Fill out the goal (we recommend setting min_duration to 1 second)
         goal.target.header.frame_id = frame_id
         goal.target.header.stamp = rospy.Time.now()
         goal.target.point = geometry_msgs.msg.Point(x, y, z)
+
+        # TODO: Send the goal
         self._client2.send_goal(goal)
+        # TODO: Wait for result
         self._client2.wait_for_result()
 
 
@@ -91,27 +78,27 @@ class Head(object):
         pan = max(pan, self.MIN_PAN)
         tilt = min(tilt, self.MAX_TILT)
         tilt = max(tilt, self.MIN_TILT)
+
         # TODO: Create a trajectory point
+        point = trajectory_msgs.msg.JointTrajectoryPoint()
 
         # TODO: Set positions of the two joints in the trajectory point
-        # TODO: Set time of the trajectory point
-
-        # TODO: Create goal
-        # TODO: Add joint names to the list
-        # TODO: Add trajectory point created above to trajectory
-
-        # TODO: Send the goal
-        # TODO: Wait for result
-        point = trajectory_msgs.msg.JointTrajectoryPoint()
         point.positions.append(pan)
         point.positions.append(tilt)
+        # TODO: Set time of the trajectory point
         point.time_from_start = rospy.Duration(1)
 
+        # TODO: Create goal
         goal = control_msgs.msg.FollowJointTrajectoryGoal()
         goal.trajectory.header.stamp = rospy.Time.now()
+        # TODO: Add joint names to the list
         goal.trajectory.joint_names.append(PAN_JOINT)
         goal.trajectory.joint_names.append(TILT_JOINT)
+        # TODO: Add trajectory point created above to trajectory
         goal.trajectory.points.append(point)
 
+        # TODO: Send the goal
         self._client1.send_goal(goal)
+        # TODO: Wait for result
         self._client1.wait_for_result()
+
