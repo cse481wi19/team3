@@ -18,6 +18,7 @@ class JointStateReader(object):
     def __init__(self):                                                                                
         self.arm_joints = ArmJoints.from_list([None] * 7)
         self.joint_names = self.arm_joints.names()
+        self.torso_joint = None
         rospy.Subscriber(JOINT_TOPIC, JointState, self.callback)
                                                                                                        
     def callback(self, data):
@@ -36,7 +37,8 @@ class JointStateReader(object):
                 self.arm_joints.set_wrist_flex(position)
             elif name == self.joint_names[6]:
                 self.arm_joints.set_wrist_roll(position) 
-
+            elif name == "torso_lift_joint":
+                self.torso_joint = position
             
 
     def get_joint(self, name):                                                                         
@@ -47,6 +49,9 @@ class JointStateReader(object):
                                                                                                        
         Returns: the joint value, or None if we do not have a value yet.                               
         """                                                                                            
+        if name == "torso_lift_joint":
+            return self.torso_joint
+
         try:
             return self.arm_joints.values()[self.joint_names.index(name)]
         except ValueError:
