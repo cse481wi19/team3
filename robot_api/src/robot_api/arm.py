@@ -34,22 +34,22 @@ class Arm(object):
                 the arm.
         """
         # TODO: Create a trajectory point
+        point = trajectory_msgs.msg.JointTrajectoryPoint()
         # TODO: Set position of trajectory point
+        point.positions.extend(arm_joints.values())
         # TODO: Set time of trajectory point
+        point.time_from_start = rospy.Duration(5)
         
 
         # TODO: Create goal
+        goal = control_msgs.msg.FollowJointTrajectoryGoal()
         # TODO: Add joint name to list
+        goal.trajectory.joint_names.extend(arm_joints.names())
         # TODO: Add the trajectory point created above to trajectory
+        goal.trajectory.points.append(point)
 
         # TODO: Send goal
-        # TODO: Wait for result
-        goal = control_msgs.msg.FollowJointTrajectoryGoal()
-        goal.trajectory.joint_names.extend(arm_joints.names())
-        point = trajectory_msgs.msg.JointTrajectoryPoint()
-        point.positions.extend(arm_joints.values())
-        point.time_from_start = rospy.Duration(5)
-        goal.trajectory.points.append(point)
         self._client.send_goal(goal)
+        # TODO: Wait for result
         self._client.wait_for_result(rospy.Duration(10))
                                                                 
