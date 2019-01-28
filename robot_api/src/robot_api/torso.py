@@ -31,8 +31,8 @@ class Torso(object):
                 from Torso.MIN_HEIGHT (0.0) to Torso.MAX_HEIGHT(0.4).
         """
         # Clip the height to our desired range.
-        height = min(height, 0.4)
-        height = max(height, 0.0)
+        height = min(height, self.MAX_HEIGHT)
+        height = max(height, self.MIN_HEIGHT)
 
         goal = control_msgs.msg.FollowJointTrajectoryGoal()
         goal.trajectory.joint_names.append(TORSO_JOINT_NAME)
