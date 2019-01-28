@@ -29,6 +29,10 @@
       #driving {
         display: inline-block;
       }
+      #camera img {
+        width: 100%;
+        height: auto;
+      }
     </style>
     <!-- HTML TEMPLATE
          Here is where you add the HTML for your element.
@@ -61,6 +65,9 @@
 
     <h1>Fetch Teleop</h1>
     [[status]]
+    <div id="camera">
+        <img src="//[[hostname]]:8000/stream?topic=/head_camera/rgb/image_raw"></img>
+    </div>
     <div>
         Torso height: [[_round(torsoHeight.data, 0.001)]] meters
     </div>
@@ -106,6 +113,10 @@
      * @polymer
      */
     class WebTeleopApp extends Polymer.Element {
+      ready() {
+        super.ready();
+        this.hostname = window.location.hostname;
+      }
       static get is() { return 'web-teleop-app'; }
       // List properties here, which we will not use in this lab!!!
       static get properties() {
