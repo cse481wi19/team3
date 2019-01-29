@@ -30,15 +30,15 @@ class Torso(object):
             height: The height, in meters, to set the torso to. Values range
                 from Torso.MIN_HEIGHT (0.0) to Torso.MAX_HEIGHT(0.4).
         """
-        # TODO: Check that the height is between MIN_HEIGHT and MAX_HEIGHT.
-        # TODO: Create a trajectory point
-        # TODO: Set position of trajectory point
-        # TODO: Set time of trajectory point
+        # Clip the height to our desired range.
+        height = min(height, self.MAX_HEIGHT)
+        height = max(height, self.MIN_HEIGHT)
 
-        # TODO: Create goal
-        # TODO: Add joint name to list
-        # TODO: Add the trajectory point created above to trajectory
-
-        # TODO: Send goal
-        # TODO: Wait for result
-        rospy.logerr('Not implemented.')
+        goal = control_msgs.msg.FollowJointTrajectoryGoal()
+        goal.trajectory.joint_names.append(TORSO_JOINT_NAME)
+        point = trajectory_msgs.msg.JointTrajectoryPoint()
+        point.positions.append(height)
+        point.time_from_start = rospy.Duration(TIME_FROM_START)
+        goal.trajectory.points.append(point)
+        self._client.send_goal(goal)
+        self._client.wait_for_result(rospy.Duration(10))
