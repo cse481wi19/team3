@@ -6,19 +6,47 @@
 :host {
     display: block;
 }
+
 paper-slider {
     --paper-slider-input: {
         width: 100px;
     }
 }
+
 paper-button {
     background-color: #0ee;
     user-select: none;
 }
+
 #driving {
     display: inline-block;
 }
-#camera img {
-    width: 100%;
-    height: auto;
+
+.content {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+@media only screen and (max-width: 640px) {
+    /* Phones */
+    #camera img {
+        width: 100%;
+        height: auto;
+    }
+
+    .section {
+        width: 100%;
+    }
+}
+
+@media only screen and (min-width: 1000px) {
+    /* Computers */
+    #camera img {
+        width: 640px;
+        height: auto;
+    }
+
+    .section {
+        width: 50%;
+    }
 }

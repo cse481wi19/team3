@@ -10,7 +10,7 @@
   <link rel="import" type="css" href="css/styles.css">
 
   <template>
-    <!-- ros-websocket: Connects to the backend -->`
+    <!-- ros-websocket: Connects to the backend -->
     <ros-websocket auto ros="{{ros}}"
         url="{{url}}"
         on-connection="_handleConnection"
@@ -38,6 +38,7 @@
     ></ros-topic>
     <ros-service auto
         id="headService"
+        // @TODO add on-response and on-fail.
         name="/web_teleop/set_head"
         ros="{{ros}}"
         service-type="web_teleop/SetHead"
@@ -63,60 +64,66 @@
         service-type="web_teleop/SetTorso"
     ></ros-service>
 
-
-    <h1>Fetch Teleop</h1>
-    [[status]]
-    <div id="camera">
-        <img src="//[[hostname]]:8000/stream?topic=/head_camera/rgb/image_raw"></img>
+    <div id="top">
+        <h1>Robo Angelo Dashboard</h1>
+        [[status]]
     </div>
 
-    <div>
-        Torso height: [[_round(torsoHeight.data, 0.001)]] meters
-    </div>
-    <div class="layout horizontal center">
-        <paper-slider min="0" max="0.4" step="0.01" editable
-            value="{{desiredTorsoHeight}}"></paper-slider>
-        <paper-button on-tap="_setTorso">Set torso</paper-button>
+    <div id="dashboard" class="layout horizontal content">
+        <div id="camera" class="section">
+            <img src="//[[hostname]]:8000/stream?topic=/head_camera/rgb/image_raw"></img>
+        </div>
+
+        <div id="controls" class="section">
+            <div>
+                Torso height: [[_round(torsoHeight.data, 0.001)]] meters
+            </div>
+            <div class="layout horizontal center">
+                <paper-slider min="0" max="0.4" step="0.01" editable
+                    value="{{desiredTorsoHeight}}"></paper-slider>
+                <paper-button on-tap="_setTorso">Set torso</paper-button>
+            </div>
+            <div class="layout horizontal center">
+                <paper-slider min="-1" max="1" step="0.01" editable
+                    value="{{desiredTiltHeight}}"></paper-slider>
+                <paper-button on-tap="_setTilt">Set tilt</paper-button>
+            </div>
+
+            <div class="layout horizontal center">
+                <paper-button on-tap="_setArm">Set arm</paper-button>
+            </div>
+
+            <div class="layout horizontal center">
+                <paper-button on-tap="_setGripper">Toggle gripper</paper-button>
+            </div>
+
+            <div id="driving" class="layout vertical">
+              <div class="layout horizontal">
+                <div class="flex"></div>
+                <paper-button
+                  on-down="_startForward"
+                  on-up="_endBaseCommand"
+                >Forward</paper-button>
+                <div class="flex"></div>
+              </div>
+              <div class="layout horizontal">
+                <div class="flex"></div>
+                <paper-button
+                    on-down="_startLeft"
+                    on-up="_endBaseCommand">
+                    Left</paper-button>
+                <paper-button
+                    on-down="_startBackward"
+                    on-up="_endBaseCommand">Back</paper-button>
+                <paper-button
+                    on-down="_startRight"
+                    on-up="_endBaseCommand">Right</paper-button>
+                <div class="flex"></div>
+              </div>
+            </div>
+        </div>
     </div>
 
-    <div class="layout horizontal center">
-        <paper-slider min="-1" max="1" step="0.01" editable
-            value="{{desiredTiltHeight}}"></paper-slider>
-        <paper-button on-tap="_setTilt">Set tilt</paper-button>
-    </div>
-
-    <div class="layout horizontal center">
-        <paper-button on-tap="_setArm">Set arm</paper-button>
-    </div>
-
-    <div class="layout horizontal center">
-        <paper-button on-tap="_setGripper">Toggle gripper</paper-button>
-    </div>
-
-    <div id="driving" class="layout vertical">
-      <div class="layout horizontal">
-        <div class="flex"></div>
-        <paper-button
-          on-down="_startForward"
-          on-up="_endBaseCommand"
-        >Forward</paper-button>
-        <div class="flex"></div>
-      </div>
-      <div class="layout horizontal">
-        <div class="flex"></div>
-        <paper-button
-            on-down="_startLeft"
-            on-up="_endBaseCommand">
-            Left</paper-button>
-        <paper-button
-            on-down="_startBackward"
-            on-up="_endBaseCommand">Back</paper-button>
-        <paper-button
-            on-down="_startRight"
-            on-up="_endBaseCommand">Right</paper-button>
-        <div class="flex"></div>
-      </div>
-    </div>
 
   </template>
 
