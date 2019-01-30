@@ -7,41 +7,23 @@
 <link rel="import" href="../../bower_components/ros-service/ros-service.html">
 
 <dom-module id="web-teleop-app">
+  <link rel="import" type="css" href="css/styles.css">
 
   <template>
-    <style is="custom-style" include="iron-flex"></style>
-    <style>
-     <!-- CSS STYLE RULES
-          CSS style rules you add here only affect the HTML defined in this file.
-          If you are interested in more advanced techniques like sharing styles across elements, ask the course staff. -->
-      :host {
-        display: block;
-      }
-      paper-slider {
-        --paper-slider-input: {
-            width: 100px;
-        }
-      }
-      paper-button {
-        background-color: #0ee;
-        user-select: none;
-      }
-      #driving {
-        display: inline-block;
-      }
-      #camera img {
-        width: 100%;
-        height: auto;
-      }
-    </style>
-    <!-- HTML TEMPLATE
-         Here is where you add the HTML for your element.
-         There is special syntax for binding JavaScript variables in your template. -->
+    <!-- ros-websocket: Connects to the backend -->`
     <ros-websocket auto ros="{{ros}}"
         url="{{url}}"
         on-connection="_handleConnection"
         on-close="_handleClose"
         on-error="_handleError"></ros-websocket>
+
+    <style is="custom-style" include="iron-flex"></style>
+
+    <!-- HTML TEMPLATE
+         Here is where you add the HTML for your element.
+         There is special syntax for binding JavaScript variables in your template. -->
+    <!-- Using last-message, it's easy to make a variable that automatically updates
+         when a new message is sent to a topic. -->
     <ros-topic auto
         ros="{{ros}}"
         topic="joint_state_republisher/torso_lift_joint"
@@ -56,7 +38,6 @@
     ></ros-topic>
     <ros-service auto
         id="headService"
-        // @TODO add on-response and on-fail.
         name="/web_teleop/set_head"
         ros="{{ros}}"
         service-type="web_teleop/SetHead"
@@ -139,5 +120,5 @@
 
   </template>
 
-  <script src="web-teleop-app.js"></script>
+  <script src="js/web-teleop-app.js"></script>
 </dom-module>
