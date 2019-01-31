@@ -51,7 +51,7 @@ class Base(object):
         twist.angular.z = angular_speed
         self._publisher.publish(twist)
 
-    def go_forward(self, distance, speed=0.1):
+    def go_forward(self, distance, speed=0.5):
         """Moves the robot a certain distance.
 
         It's recommended that the robot move slowly. If the robot moves too
@@ -69,7 +69,7 @@ class Base(object):
         while self.odom is None:
             rospy.sleep(0.1)
         start = copy.deepcopy(self.odom)
-        rate = rospy.Rate(25)
+        rate = rospy.Rate(10)
         distance_from_start = self._linear_distance(start, self.odom)
         while distance_from_start < math.fabs(distance):
             distance_from_start = self._linear_distance(start, self.odom)
@@ -79,7 +79,7 @@ class Base(object):
             self.move(direction * speed, 0)
             rate.sleep()
 
-    def turn(self, angular_distance, speed=1):
+    def turn(self, angular_distance, speed=0.5):
         """Rotates the robot a certain angle.
 
         This illustrates how to turn the robot by checking that the X-axis of
@@ -92,15 +92,16 @@ class Base(object):
         """
         while self.odom is None:
             rospy.sleep(0.1)
-        direction = -1 if angular_distance < 0 else 1
 
         current_yaw = self._yaw_from_quaternion(self.odom.orientation)
         goal_yaw = current_yaw + angular_distance
         goal_x_axis = np.array([math.cos(goal_yaw), math.sin(goal_yaw), 0])
 
-        rate = rospy.Rate(100)
+        rate = rospy.Rate(10)
         x_axis = self._x_axis_from_quaternion(self.odom.orientation)
-        while not np.allclose(x_axis, goal_x_axis, atol=0.01):
+        while not np.allclose(x_axis, goal_x_axis, atol=0.05):
+            current_yaw = self._yaw_from_quaternion(self.odom.orientation)
+            direction = 1 if current_yaw - goal_yaw < 0 else -1
             self.move(0, direction * speed)
             x_axis = self._x_axis_from_quaternion(self.odom.orientation)
             rate.sleep()
