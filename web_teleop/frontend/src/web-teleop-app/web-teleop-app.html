@@ -6,12 +6,14 @@
 <link rel="import" href="../../bower_components/ros-topic/ros-topic.html">
 <link rel="import" href="../../bower_components/ros-service/ros-service.html">
 
+
 <dom-module id="web-teleop-app">
   <link rel="import" type="css" href="css/styles.css">
 
   <template>
     <!-- ros-websocket: Connects to the backend -->
-    <ros-websocket auto ros="{{ros}}"
+    <ros-websocket auto id="websocket"
+        ros="{{ros}}"
         url="{{url}}"
         on-connection="_handleConnection"
         on-close="_handleClose"
@@ -98,6 +100,7 @@
             </div>
 
             <div id="driving" class="layout vertical">
+              <!-- WASD controls -->
               <div class="layout horizontal">
                 <div class="flex"></div>
                 <paper-button
@@ -121,6 +124,34 @@
                 <div class="flex"></div>
               </div>
             </div>
+
+            <div class="layout horizontal">
+                <div id="mapping" class="layout vertical">
+                    <div id="create-pose" class="layout horizontal">
+                        <paper-button>Create pose</paper-button>
+                    </div>
+                    <div id="list-pose" class="layout horizontal">
+                        <paper-button>List pose</paper-button>
+                    </div>
+                    <div id="delete-pose" class="layout horizontal">
+                        <paper-button>Delete pose</paper-button>
+                    </div>
+                    <div id="send-pose" class="layout horizontal">
+                        <paper-button>Send robot to pose</paper-button>
+                    </div>
+                    <div id="edit-pose" class="layout horizontal">
+                        <paper-button>Edit pose</paper-button>
+                    </div>
+                    <div id="rename-pose" class="layout horizontal">
+                        <paper-button>Rename pose</paper-button>
+                    </div>
+                </div>
+                <div id="pose-list">
+
+                </div>
+            </div>
+
+
         </div>
     </div>
 

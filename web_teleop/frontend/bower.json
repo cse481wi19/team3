@@ -7,7 +7,8 @@
     "ros-topic": "jstnhuang/ros-topic#^1.0.0",
     "ros-service": "jstnhuang/ros-service#^2.0.1",
     "paper-button": "PolymerElements/paper-button#2.x",
-    "paper-slider": "PolymerElements/paper-slider#2.x"
+    "paper-slider": "PolymerElements/paper-slider#2.x",
+    "ros-rviz": "jstnhuang/ros-rviz#^3.1.1"
   },
   "devDependencies": {
     "web-component-tester": "Polymer/web-component-tester#^6.0.0",

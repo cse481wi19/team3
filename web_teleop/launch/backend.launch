@@ -5,4 +5,5 @@
     <param name="port" value="8000" />
   </node>
   <node pkg="web_teleop" type="actuators_node.py" name="web_teleop_actuators" />
+  <node pkg="tf2_web_republisher" type="tf2_web_republisher" name="tf2_web_republisher" />
 </launch>

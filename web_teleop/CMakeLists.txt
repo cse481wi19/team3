@@ -10,7 +10,6 @@ project(web_teleop)
 find_package(catkin REQUIRED COMPONENTS
   message_generation
   robot_api
-  fetch_api
   joint_state_reader
   roscpp
   rospy
@@ -51,9 +50,8 @@ find_package(catkin REQUIRED COMPONENTS
 
 ## Generate messages in the 'msg' folder
 # add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
+# FILES
+# PoseNames.msg
 # )
 
 ## Generate services in the 'srv' folder
@@ -73,9 +71,9 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
+# generate_messages(
 #  DEPENDENCIES
-)
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -109,7 +107,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES web_teleop
- CATKIN_DEPENDS message_runtime robot_api fetch_api joint_state_reader roscpp rospy
+ CATKIN_DEPENDS message_runtime robot_api joint_state_reader roscpp rospy
 #  DEPENDS system_lib
 )
 

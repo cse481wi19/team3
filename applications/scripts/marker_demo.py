@@ -7,6 +7,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 from geometry_msgs.msg import Quaternion, Pose, Point, Vector3
 from std_msgs.msg import Header, ColorRGBA
 from nav_msgs.msg import Odometry
+import math
 
 def wait_for_time():                                              
     """Wait for simulated time to begin.                          
@@ -14,25 +15,35 @@ def wait_for_time():
     while rospy.Time().now().to_sec() == 0:                       
         pass
 
+def distance(pose1, pose2):
+    return math.sqrt((pose1.position.x - pose2.position.x)**2 + (pose1.position.y - pose2.position.y)**2 + (pose1.position.z - pose2.position.z)**2)
+
 class NavPath(object):
 
     def __init__(self, marker_publisher):
         self._path = []
         self._marker_publisher = marker_publisher
-        self._last = 0
+        self._lastpose = None
 
     def callback(self, msg):
         rospy.loginfo(msg)
-        if rospy.Time().now().to_sec() - self._last > 1:
+        if not self._lastpose is None:
+            print(distance(self._lastpose, msg.pose.pose))
+        if self._lastpose is None:
             self._path.append(copy(msg.pose.pose))
             self.plot_points()
-            self._last = rospy.Time().now().to_sec()
+            self._lastpose = msg.pose.pose
+        elif distance(self._lastpose, msg.pose.pose) > .2:
+            print(distance(self._lastpose, msg.pose.pose))
+            self._path.append(copy(msg.pose.pose))
+            self.plot_points()
+            self._lastpose = msg.pose.pose
+
 
     def plot_points(self):
         markers = [Marker(
-                    type=Marker.LINE_STRIP,
+                    type=Marker.SPHERE,
                     id=i,
-                    ns="Name",
                     action=0,
                     pose=pose,
                     scale=Vector3(0.1, 0.1, 0.1),
@@ -45,10 +56,6 @@ def main():
   rospy.init_node('my_node')
   wait_for_time()
   marker_publisher = rospy.Publisher('visualization_marker_array', MarkerArray, queue_size=100)
-  rospy.sleep(0.5)
-  show_text_in_rviz(marker_publisher, 'Kariboh? Your deck is bad.')
-  rospy.sleep(2.0)
-  show_text_in_rviz(marker_publisher, 'My grandfather\'s deck has no bad cards.')
   rospy.sleep(2.0)
   nav = NavPath(marker_publisher)
   odom_sub = rospy.Subscriber('odom', Odometry, callback=nav.callback)

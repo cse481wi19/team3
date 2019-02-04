@@ -19,13 +19,10 @@ base = Base()
 
 def handle_viz_input(input):
     if input.event_type == InteractiveMarkerFeedback.BUTTON_CLICK and input.control_name == "f":
-        print("Forward")
         base.go_forward(0.5)
     if input.event_type == InteractiveMarkerFeedback.BUTTON_CLICK and input.control_name == "l":
-        print("Left")
         base.turn(math.pi/6.0)
     if input.event_type == InteractiveMarkerFeedback.BUTTON_CLICK and input.control_name == "r":
-        print("Right")
         base.turn(-math.pi/6.0)
 
 def main():
