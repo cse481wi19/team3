@@ -7,7 +7,7 @@ import rospy
 
 from .arm_joints import ArmJoints
 from .moveit_goal_builder import MoveItGoalBuilder
-from moveit_msgs.msg import MoveItErrorCodes, MoveGroupAction
+from moveit_msgs.msg import MoveItErrorCodes, MoveGroupAction, OrientationConstraint
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 
 ACTION_SERVER = "arm_controller/follow_joint_trajectory"
@@ -83,7 +83,8 @@ class Arm(object):
                  plan_only=False,
                  replan=False,
                  replan_attempts=5,
-                 tolerance=0.01):
+                 tolerance=0.01,
+                 orientation_constraint=None):
         """Moves the end-effector to a pose, using motion planning.
 
     Args:
@@ -117,15 +118,21 @@ class Arm(object):
         goal_builder.replan = replan
         goal_builder.replan_attempts = replan_attempts
         goal_builder.tolerance = tolerance
+
+        if orientation_constraint is not None:
+            goal_builder.add_path_orientation_constraint(orientation_constraint)
+
         goal = goal_builder.build()
 
         self._moveit_goal_client.send_goal(goal)
         self._moveit_goal_client.wait_for_result(rospy.Duration(execution_timeout))
-        res = self._moveit_goal_client.get_result().error_code.val
-        if res == MoveItErrorCodes.SUCCESS:
+        res = self._moveit_goal_client.get_result()
+        if res is None:
+            return None
+        if res.error_code.val == MoveItErrorCodes.SUCCESS:
             return None
 
-        return self.moveit_error_string(res)
+        return self.moveit_error_string(res.error_code.val)
 
     def cancel_all_goals(self):
         self._client.cancel_all_goals() # Your action client from Lab 7
