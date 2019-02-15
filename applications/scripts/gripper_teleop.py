@@ -21,7 +21,6 @@ def wait_for_time():
     while rospy.Time().now().to_sec() == 0:                       
         pass
 
-
 class GripperTeleop(object):
     def __init__(self, arm, gripper, im_server, tf_listener):
         self._arm = arm
@@ -269,8 +268,8 @@ def main():
     def shutdown():
         arm.cancel_all_goals()
     rospy.on_shutdown(shutdown)
-    im_server = InteractiveMarkerServer('gripper_im_server')
-    auto_pick_im_server = InteractiveMarkerServer('auto_pick_im_server')
+    im_server = InteractiveMarkerServer('gripper_im_server', q_size=2)
+    auto_pick_im_server = InteractiveMarkerServer('auto_pick_im_server', q_size=2)
     listener = tf.TransformListener()
     rospy.sleep(0.1)
     teleop = GripperTeleop(arm, gripper, im_server, listener)
