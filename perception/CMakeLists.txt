@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   rosbag
   sensor_msgs
   tf
+  simple_grasping
 )
 
 catkin_python_setup()
