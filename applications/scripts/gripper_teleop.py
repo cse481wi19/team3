@@ -102,7 +102,7 @@ def translatePose(pose, point):
     transPose = Pose(point, Quaternion())
     tM = matrixFromPose(transPose)
     pM = matrixFromPose(pose)
-    rM = np.matmul(pM, tM)
+    rM = np.dot(pM, tM)
     resTrans = tft.translation_from_matrix(rM)
     resRot = tft.quaternion_from_matrix(rM)
     res = Pose(Point(resTrans[0], resTrans[1], resTrans[2]),
@@ -354,7 +354,7 @@ class AutoPickTeleop(object):
         poseTransformM = np.add(np.add(poseRotationM, poseTranslationM), -1 * np.identity(4))
         objTransformM = np.add(np.add(objRotationM, objTranslationM), -1 * np.identity(4))
         # Composition of the two transformations to get from pose to parent of object frame.
-        resTransformM = np.matmul(objTransformM, poseTransformM)
+        resTransformM = np.dot(objTransformM, poseTransformM)
 
         res = Pose()
         translation = tft.translation_from_matrix(resTransformM)
