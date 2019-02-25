@@ -17,6 +17,7 @@
 #include "pcl/segmentation/extract_clusters.h"
 
 #include "geometry_msgs/Pose.h"
+#include "geometry_msgs/Quaternion.h"
 #include "simple_grasping/shape_extraction.h"
 #include "shape_msgs/SolidPrimitive.h"
 
@@ -24,6 +25,55 @@ typedef pcl::PointXYZRGB PointC;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
 
 namespace perception {
+
+void SegmentVerticalSurface(PointCloudC::Ptr cloud,
+                            pcl::PointIndices::Ptr indices,
+                            pcl::ModelCoefficients::Ptr coeff) {
+  pcl::PointIndices indices_internal;
+  pcl::SACSegmentation<PointC> seg;
+  seg.setOptimizeCoefficients(true);
+  // Search for a plane perpendicular to some axis (specified below).
+  seg.setModelType(pcl::SACMODEL_PERPENDICULAR_PLANE);
+  seg.setMethodType(pcl::SAC_RANSAC);
+  // Set the distance to the plane for a point to be an inlier.
+  double distance_thresh;
+  ros::param::param("segment_vertical_distance_thresh", distance_thresh, 0.02);
+  seg.setDistanceThreshold(distance_thresh);
+  seg.setInputCloud(cloud);
+
+  // Make sure that the plane is perpendicular to X-axis, 10 degree tolerance.
+  Eigen::Vector3f axis;
+  axis << 1, 0, 0;
+  seg.setAxis(axis);
+  seg.setEpsAngle(pcl::deg2rad(10.0));
+
+  // coeff contains the coefficients of the plane:
+  // ax + by + cz + d = 0
+  seg.segment(indices_internal, *coeff);
+
+  /*
+  // Likely will want to do something like this to get a PC for things on the whiteboard.
+  double distance_above_plane;
+  ros::param::param("distance_above_plane", distance_above_plane, 0.005);
+
+  // Build custom indices that ignores points above the plane.
+  for (size_t i = 0; i < cloud->size(); ++i) {
+    const PointC& pt = cloud->points[i];
+    float val = coeff->values[0] * pt.x + coeff->values[1] * pt.y +
+                coeff->values[2] * pt.z + coeff->values[3];
+    if (val <= distance_above_plane) {
+      indices->indices.push_back(i);
+    }
+  }
+  */
+
+  // Comment this out
+  *indices = indices_internal;
+  if (indices->indices.size() == 0) {
+    ROS_ERROR("Unable to find surface.");
+    return;
+  }
+}
 
 void SegmentSurface(PointCloudC::Ptr cloud,
                     pcl::PointIndices::Ptr indices,
@@ -139,7 +189,17 @@ Segmenter::Segmenter(const ros::Publisher& surface_points_pub,
                      const ros::Publisher& above_surface_pub)
     : surface_points_pub_(surface_points_pub),
       marker_pub_(marker_pub),
-      above_surface_pub_(above_surface_pub) {}
+      above_surface_pub_(above_surface_pub),
+      pose_pub_() {}
+
+Segmenter::Segmenter(const ros::Publisher& surface_points_pub,
+                     const ros::Publisher& marker_pub,
+                     const ros::Publisher& above_surface_pub,
+                     const ros::Publisher& plane_pub)
+    : surface_points_pub_(surface_points_pub),
+      marker_pub_(marker_pub),
+      above_surface_pub_(above_surface_pub),
+      pose_pub_(plane_pub) {}
 
 void Segmenter::Callback(const sensor_msgs::PointCloud2& msg) {
   PointCloudC::Ptr cloud(new PointCloudC());
@@ -210,6 +270,34 @@ void Segmenter::Callback(const sensor_msgs::PointCloud2& msg) {
     object_marker.color.a = 0.3;
     marker_pub_.publish(object_marker);
   }
+}
+
+
+void Segmenter::VerticalCallback(const sensor_msgs::PointCloud2& msg) {
+  ROS_INFO("VerticalCallback");
+  PointCloudC::Ptr cloud(new PointCloudC());
+  pcl::fromROSMsg(msg, *cloud);
+
+  pcl::PointIndices::Ptr whiteboard_inliers(new pcl::PointIndices());
+  pcl::ModelCoefficients::Ptr coeffs(new pcl::ModelCoefficients());
+  SegmentVerticalSurface(cloud, whiteboard_inliers, coeffs);
+
+  PointCloudC::Ptr subset_cloud(new PointCloudC);
+  pcl::ExtractIndices<PointC> extract;
+  extract.setInputCloud(cloud);
+  extract.setIndices(whiteboard_inliers);
+  extract.filter(*subset_cloud);
+
+  sensor_msgs::PointCloud2 msg_out;
+  pcl::toROSMsg(*subset_cloud, msg_out);
+  surface_points_pub_.publish(msg_out);
+
+  PointCloudC::Ptr extract_out(new PointCloudC());
+  shape_msgs::SolidPrimitive shape;
+  geometry_msgs::Pose table_pose;
+  simple_grasping::extractShape(*subset_cloud, coeffs, *extract_out, shape,
+                                table_pose);
+  pose_pub_.publish(table_pose);
 }
 
 }  // namespace perception

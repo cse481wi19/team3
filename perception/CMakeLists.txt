@@ -56,3 +56,13 @@ target_link_libraries(perception_point_cloud_demo
   perception_segmentation
   ${catkin_LIBRARIES}
 )
+
+add_executable(perception_whiteboard_application src/whiteboard_application.cpp)
+set_target_properties(perception_whiteboard_application PROPERTIES OUTPUT_NAME whiteboard_application PREFIX "")
+add_dependencies(perception_whiteboard_application ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(perception_whiteboard_application
+  perception_crop
+  perception_downsample
+  perception_segmentation
+  ${catkin_LIBRARIES}
+)

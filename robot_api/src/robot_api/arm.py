@@ -4,13 +4,18 @@ import actionlib
 import control_msgs.msg
 import trajectory_msgs.msg
 import rospy
+import tf
+import tf.transformations as tft
 
 from .arm_joints import ArmJoints
 from .moveit_goal_builder import MoveItGoalBuilder
 from moveit_msgs.msg import MoveItErrorCodes, MoveGroupAction, OrientationConstraint
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
+from geometry_msgs.msg import Pose, Point, Quaternion
+from robot_controllers_msgs.msg import QueryControllerStatesAction, QueryControllerStatesGoal, ControllerState
 
 ACTION_SERVER = "arm_controller/follow_joint_trajectory"
+QUERY_SERVER = "query_controller_states"
 
 class Arm(object):
     """Arm controls the robot's arm.
@@ -23,16 +28,17 @@ class Arm(object):
     """
 
     def __init__(self):
-        # TODO: Create actionlib client
-        # TODO: Wait for server
         self._client = actionlib.SimpleActionClient(ACTION_SERVER,
                 control_msgs.msg.FollowJointTrajectoryAction)
+        self.query_client = actionlib.SimpleActionClient(QUERY_SERVER,
+                QueryControllerStatesAction)
         self._client.wait_for_server()
 
         self._moveit_goal_client = actionlib.SimpleActionClient("move_group",
                 MoveGroupAction)
         self._moveit_goal_client.wait_for_server()
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
+        self.listener = tf.TransformListener()
 
     def compute_ik(self, pose_stamped, timeout=rospy.Duration(5)):
         """Computes inverse kinematics for the given pose.
@@ -224,4 +230,30 @@ class Arm(object):
         self._client.send_goal(goal)
         # TODO: Wait for result
         self._client.wait_for_result(rospy.Duration(10))
+    
+    def get_arm_pose(self):
+        try:
+            (trans, rot) = self.listener.lookupTransform('/base_link',
+                    '/wrist_roll_link', rospy.Time(0))
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            return None
+        res = Pose(Point(*trans), Quaternion(*rot))
+        return res
 
+    def relax_arm(self):
+        goal = QueryControllerStatesGoal()
+        state = ControllerState()
+        state.name = 'arm_controller/follow_joint_trajectory'
+        state.state = ControllerState.STOPPED
+        goal.updates.append(state)
+        self.query_client.send_goal(goal)
+        self.query_client.wait_for_result()
+
+    def enable_arm(self):
+        goal = QueryControllerStatesGoal()
+        state = ControllerState()
+        state.name = 'arm_controller/follow_joint_trajectory'
+        state.state = ControllerState.RUNNING
+        goal.updates.append(state)
+        self.query_client.send_goal(goal)
+        self.query_client.wait_for_result()

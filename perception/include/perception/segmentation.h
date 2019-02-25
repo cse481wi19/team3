@@ -19,6 +19,10 @@ void SegmentSurface(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
                     pcl::PointIndices::Ptr indices,
                     pcl::ModelCoefficients::Ptr coeff);
 
+void SegmentVerticalSurface(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
+                            pcl::PointIndices::Ptr indices,
+                            pcl::ModelCoefficients::Ptr coeff);
+
 // Computes the axis-aligned bounding box of a point cloud.
 //
 // Args:
@@ -40,11 +44,17 @@ class Segmenter {
   Segmenter(const ros::Publisher& surface_points_pub,
             const ros::Publisher& marker_pub,
             const ros::Publisher& above_surface_pub);
+  Segmenter(const ros::Publisher& surface_points_pub,
+            const ros::Publisher& marker_pub,
+            const ros::Publisher& above_surface_pub,
+            const ros::Publisher& pose_pub);
   void Callback(const sensor_msgs::PointCloud2& msg);
+  void VerticalCallback(const sensor_msgs::PointCloud2& msg);
 
  private:
   ros::Publisher surface_points_pub_;
   ros::Publisher marker_pub_;
   ros::Publisher above_surface_pub_;
+  ros::Publisher pose_pub_;
 };
 }  // namespace perception
