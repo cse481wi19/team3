@@ -4,6 +4,7 @@
 #include "pcl/point_cloud.h"
 #include "pcl/point_types.h"
 #include "pcl_conversions/pcl_conversions.h"
+#include "pcl_ros/transforms.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
 #include "visualization_msgs/Marker.h"
@@ -190,7 +191,8 @@ Segmenter::Segmenter(const ros::Publisher& surface_points_pub,
     : surface_points_pub_(surface_points_pub),
       marker_pub_(marker_pub),
       above_surface_pub_(above_surface_pub),
-      pose_pub_() {}
+      pose_pub_(),
+      tfl_() {}
 
 Segmenter::Segmenter(const ros::Publisher& surface_points_pub,
                      const ros::Publisher& marker_pub,
@@ -199,7 +201,8 @@ Segmenter::Segmenter(const ros::Publisher& surface_points_pub,
     : surface_points_pub_(surface_points_pub),
       marker_pub_(marker_pub),
       above_surface_pub_(above_surface_pub),
-      pose_pub_(plane_pub) {}
+      pose_pub_(plane_pub),
+      tfl_() {}
 
 void Segmenter::Callback(const sensor_msgs::PointCloud2& msg) {
   PointCloudC::Ptr cloud(new PointCloudC());
@@ -278,13 +281,36 @@ void Segmenter::VerticalCallback(const sensor_msgs::PointCloud2& msg) {
   PointCloudC::Ptr cloud(new PointCloudC());
   pcl::fromROSMsg(msg, *cloud);
 
+  tfl_.waitForTransform("base_link", cloud->header.frame_id,
+          ros::Time(0), ros::Duration(0.5));
+
+  tf::StampedTransform transform;                                                       
+  try {                                                                                 
+    tfl_.lookupTransform("base_link", cloud->header.frame_id,                    
+                                ros::Time(0), transform);                               
+  } catch (tf::LookupException& e) {                                                    
+    std::cerr << e.what() << std::endl;                                                 
+    return;                                                                           
+  } catch (tf::ExtrapolationException& e) {                                             
+    std::cerr << e.what() << std::endl;                                                 
+    return;                                                                           
+  }
+
+  PointCloudC::Ptr cloud_out(new PointCloudC());                                                   
+  pcl_ros::transformPointCloud<PointC>("base_link", *cloud, *cloud_out, tfl_);
+
   pcl::PointIndices::Ptr whiteboard_inliers(new pcl::PointIndices());
   pcl::ModelCoefficients::Ptr coeffs(new pcl::ModelCoefficients());
-  SegmentVerticalSurface(cloud, whiteboard_inliers, coeffs);
+  SegmentVerticalSurface(cloud_out, whiteboard_inliers, coeffs);
+
+  if (whiteboard_inliers->indices.size() == 0) {
+    ROS_INFO("Oh no");
+    return;
+  }
 
   PointCloudC::Ptr subset_cloud(new PointCloudC);
   pcl::ExtractIndices<PointC> extract;
-  extract.setInputCloud(cloud);
+  extract.setInputCloud(cloud_out);
   extract.setIndices(whiteboard_inliers);
   extract.filter(*subset_cloud);
 

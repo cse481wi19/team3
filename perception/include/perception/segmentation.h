@@ -6,6 +6,7 @@
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Vector3.h"
 #include "pcl/ModelCoefficients.h"
+#include "tf/transform_listener.h"
 
 namespace perception {
 // Finds the largest horizontal surface in the given point cloud.
@@ -56,5 +57,6 @@ class Segmenter {
   ros::Publisher marker_pub_;
   ros::Publisher above_surface_pub_;
   ros::Publisher pose_pub_;
+  tf::TransformListener tfl_;
 };
 }  // namespace perception
