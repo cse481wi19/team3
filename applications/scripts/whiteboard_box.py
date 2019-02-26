@@ -35,7 +35,6 @@ class PoseTracker():
 
     def callback(self, msg):
         self.pose = msg
-        print(self.pose)
 
 def main():
     rospy.init_node('whiteboard_box')
@@ -65,7 +64,7 @@ def main():
         marker.color.b = 0.0
         marker.color.a = 0.5
         marker.pose.orientation = deepcopy(pose.pose.orientation)
-        marker.header.frame_id = 'odom'
+        marker.header.frame_id = 'base_link'
         return marker
     whiteboard_marker = makeMarker(pose)
 
@@ -82,6 +81,7 @@ def main():
         whiteboard_marker.pose.position = deepcopy(reference_marker.pose.position)
         whiteboard_marker.pose.position.y -= whiteboard_width / 2.0
         whiteboard_marker.pose.position.z += whiteboard_height / 2.0
+        print(whiteboard_marker)
 
         pub.publish(whiteboard_marker)
 
