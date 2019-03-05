@@ -43,6 +43,7 @@ def main():
     whiteboard_width = 0.5
     whiteboard_height = 0.5
     whiteboard_depth = 0.1
+    br = tf.TransformBroadcaster()
     markers = MarkerTracker()
     sub = rospy.Subscriber('whiteboard_tags', MarkerArray,
             callback=markers.callback) # Subscribe to AR tag poses, use reader.callback
@@ -84,6 +85,11 @@ def main():
         print(whiteboard_marker)
 
         pub.publish(whiteboard_marker)
+        br.sendTransform((pose.pose.position.x, pose.pose.position.y, pose.pose.position.z),
+                         (pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w),
+                         rospy.Time.now(),
+                         "whiteboard",
+                         "odom")
 
 
 if __name__ == '__main__':
