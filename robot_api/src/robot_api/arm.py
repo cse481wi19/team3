@@ -289,6 +289,65 @@ class Arm(object):
         else:
             return None
 
+
+    def cartesian_path_move(self,
+                            group,
+                            waypoints,
+                            ee_step=0.025,
+                            jump_threshold=0.0,
+                            avoid_collisions=True):
+        """Moves the end-effector smoothly through a series of waypoints.
+
+        Args:
+          group: moveit_commander.MoveGroupCommander. The planning group for
+            the arm.
+          waypoints: list of type geometry_msgs/PoseStamped. The waypoints for
+            the end-effector.
+          ee_step: float. The distance in meters to interpolate the path.
+          jump_threshold: float. The maximum allowable distance in the arm's
+            configuration space allowed between two poses in the path. Used to
+            prevent "jumps" in the IK solution.
+          avoid_collisions: bool. Whether to check for obstacles or not.
+
+        Returns:
+            string describing the error if an error occurred, else None.
+        """
+        # Transform poses into planning frame
+        poses_transformed = []
+        for i in range(0, len(waypoints)):
+            self._tf_listener.waitForTransform(waypoints[i].header.frame_id,
+                                               group.get_planning_frame(),
+                                               rospy.Time.now(),
+                                               rospy.Duration(1.0))
+            try:
+                poses_transformed.append(self._tf_listener.transformPose(
+                    group.get_planning_frame(), waypoints[i]))
+            except (tf.LookupException, tf.ConnectivityException):
+                rospy.logerr('Unable to transform pose from frame {} to {}'.format(
+                    waypoints[i].header.frame_id, group.get_planning_frame()))
+                return moveit_error_string(
+                    MoveItErrorCodes.FRAME_TRANSFORM_FAILURE)
+
+        poses_transformed_poses = [p.pose for p in poses_transformed]
+
+        # Compute path
+        plan, fraction = group.compute_cartesian_path(
+            poses_transformed_poses, ee_step, jump_threshold, avoid_collisions)
+        if fraction < 1 and fraction > 0:
+            rospy.logerr(
+                'Only able to compute {}% of the path'.format(fraction * 100))
+        if fraction == 0:
+            print("0 percent computed")
+            return moveit_error_string(MoveItErrorCodes.PLANNING_FAILED)
+
+        # Execute path
+        result = group.execute(plan, wait=True)
+        if not result:
+            return moveit_error_string(MoveItErrorCodes.INVALID_MOTION_PLAN)
+        else:
+            return None
+
+
     def check_pose(self,
                    pose_stamped,
                    allowed_planning_time=10.0,
@@ -300,6 +359,7 @@ class Arm(object):
             group_name=group_name,
             tolerance=tolerance,
             plan_only=True)
+
 
     def compute_ik(self, pose_stamped, timeout=rospy.Duration(5)):
         """Computes inverse kinematics for the given pose.
