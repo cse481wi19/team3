@@ -53,7 +53,8 @@ class ArTag(object):
         self.next_index += 1
         self.next_index %= self.n
         self.update_average_pose()
-        self.tag.pose = self.average_pose
+        #self.tag.pose = self.average_pose
+        self.tag.pose = m.pose
 
     def update_average_pose(self):
         res_pose = PoseStamped()
@@ -61,17 +62,13 @@ class ArTag(object):
             res_pose.pose.position.x += p.pose.position.x
             res_pose.pose.position.y += p.pose.position.y
             res_pose.pose.position.z += p.pose.position.z
-            res_pose.pose.orientation.x += p.pose.orientation.x
-            res_pose.pose.orientation.y += p.pose.orientation.y
-            res_pose.pose.orientation.z += p.pose.orientation.z
-            res_pose.pose.orientation.w += p.pose.orientation.w
         res_pose.pose.position.x /= len(self.pose_filter)
         res_pose.pose.position.y /= len(self.pose_filter)
         res_pose.pose.position.z /= len(self.pose_filter)
-        res_pose.pose.orientation.x /= len(self.pose_filter)
-        res_pose.pose.orientation.y /= len(self.pose_filter)
-        res_pose.pose.orientation.z /= len(self.pose_filter)
-        res_pose.pose.orientation.w /= len(self.pose_filter)
+        res_pose.pose.orientation.x = p.pose.orientation.x
+        res_pose.pose.orientation.y = p.pose.orientation.y
+        res_pose.pose.orientation.z = p.pose.orientation.z
+        res_pose.pose.orientation.w = p.pose.orientation.w
         self.average_pose = res_pose
 
     def get_marker(self):
@@ -90,14 +87,6 @@ class ArTagTracker(object):
                 self.marker_trackers[m.id].update(m)
             else:
                 self.marker_trackers[m.id] = ArTag(m, self.n)
-        """
-        new_markers = []
-        for m in msg.markers:
-            new_markers.append(m)
-        for m in self.markers:
-            if not (m.id in [mark.id for mark in new_markers]):
-                new_markers.append(m)
-        """
         self.markers = [m.get_marker() for m in self.marker_trackers.values()]
         self.publish()
 
@@ -123,7 +112,7 @@ def main():
     rospy.init_node('ar_tag_tracker')
     wait_for_time()
 
-    pub = rospy.Publisher('whiteboard_tags', MarkerArray, queue_size=10)
+    pub = rospy.Publisher('whiteboard_tags', MarkerArray, queue_size=1)
     reader = ArTagTracker(pub)
     sub = rospy.Subscriber('/ar_pose_marker', AlvarMarkers,
             callback=reader.callback) # Subscribe to AR tag poses, use reader.callback

@@ -75,6 +75,41 @@ def stabilizeOrientation(orientation):
     new_quat = tft.quaternion_multiply(tft.quaternion_multiply(rot_quat, old_quat), reflect_quat)
     return Quaternion(new_quat[0], new_quat[1], new_quat[2], new_quat[3])
 
+def computeTranslation(point, orientation):
+    def expandPoint(p):
+        return [p.x, p.y, p.z]
+
+    def multScalar(s, p):
+        res = []
+        for j in p:
+            res.append(s * j)
+        return res
+
+    def expandQuat(q):
+        return [q.x, q.y, q.z, q.w]
+
+    def rotateVectorByQuat(v, q):
+        rot = tft.quaternion_matrix(expandQuat(q))
+        return np.dot(rot, [v[0], v[1], v[2], 1])[0:3]
+
+    """Returns the quaternion obtained by rotating 'orientation' so that x
+       is perpendicular to the robot's vertical direction and in the
+       plane of the whiteboard. In this case, x is positive to the right"""
+    old_x = [1, 0, 0]
+    old_y = [0, 1, 0]
+    old_z = [0, 0, 1]
+    ref_x = rotateVectorByQuat(old_x, orientation)
+    ref_y = rotateVectorByQuat(old_y, orientation)
+    ref_z = rotateVectorByQuat(old_z, orientation)
+
+    p = expandPoint(point)
+    res_x = multScalar(p[0], ref_x)
+    res_y = multScalar(p[0], ref_y)
+    res_z = multScalar(p[0], ref_z)
+
+    return Point(res_x[0] + res_y[0] + res_z[0],
+                 res_x[1] + res_y[1] + res_z[1],
+                 res_x[2] + res_y[2] + res_z[2])
 
 def makeMarker(dimensions, pose):
     marker = Marker()
@@ -98,7 +133,7 @@ class WhiteboardFrameTracker():
     def __init__(self, poseTracker, markerTracker, tags, frame_br, marker_pub, tfl, dimensions):
         self.poseTracker = poseTracker
         self.markerTracker = markerTracker
-        self.tags = tags
+        self.tags = tags # Map from tag id to whiteboard coordinate.
         self.br = frame_br
         self.tfl = tfl
         self.marker_pub = marker_pub
@@ -108,15 +143,19 @@ class WhiteboardFrameTracker():
         """State variables"""
         self.frame_pose = Pose()
         self.orientation_filter = []
-        self.orientation_filter_maxsize = 10
-        self.orientation_inlier_angle = 0.4 # Approximately pi/8
+        self.orientation_filter_maxsize = 60
+        self.orientation_inlier_angle = 0.2 # Approximately pi/16
+        self.pose_time_threshold = 10 # seconds beyond which a pose is stale
 
     def loop(self):
         if self.localize:
-            self.updateOrientationFilter()
-            self.getFramePosition()
-        else:
-            self.updateLocalize()
+            gotOrientation = self.updateOrientationFilter()
+            gotPosition = False
+            if gotOrientation:
+                gotPosition = self.getFramePosition()
+            if gotOrientation and gotPosition:
+                self.localize = False
+        self.updateLocalize()
         self.broadcastFrame()
         self.publishMarker()
 
@@ -127,7 +166,6 @@ class WhiteboardFrameTracker():
     def updateOrientationFilter(self):
         """Uses self.poseTracker to include a new change to the whiteboard
            pose if not an outlier. If there is an update, updates frame_pose"""
-        # TODO IMPLEMENT
         ps = PoseStamped()
         ps.header.frame_id = 'base_link'
         ps.pose.orientation = stabilizeOrientation(self.poseTracker.pose.orientation)
@@ -139,7 +177,11 @@ class WhiteboardFrameTracker():
         if res:
             self.frame_pose.orientation = ps.pose.orientation
         else:
-            self.frame_pose.orientation = Quaternion()
+            print("Outlier found")
+            self.frame_pose.orientation = Quaternion(0,0,0,1)
+        if (len(self.orientation_filter) >= self.orientation_filter_maxsize):
+            return True
+        return False
 
     def isOutlier(self, orientation):
         def expandQuat(quat):
@@ -163,11 +205,28 @@ class WhiteboardFrameTracker():
         """Uses self.markerTracker to get the current position for the bottom
            left corner of the whiteboard region, and updates frame_pose"""
         # TODO implement
-        if (len(self.markerTracker.markers) == 0) or (self.markerTracker.get_id(14) is None):
+        if (len(self.markerTracker.markers) == 0):
             self.frame_pose.position = self.poseTracker.pose.position
-        else:
-            m = self.markerTracker.get_id(14)
-            self.frame_pose.position = m.pose.position
+            print("a")
+            return False
+        newest = self.markerTracker.markers[0]
+        for tag in self.markerTracker.markers:
+            if (tag.header.stamp.to_sec() > newest.header.stamp.to_sec()):
+                newest = tag
+            print(tag.id, ": ", rospy.Time.now().to_sec() - tag.header.stamp.to_sec())
+        age_s = rospy.Time.now().to_sec() - newest.header.stamp.to_sec()
+        if age_s > self.pose_time_threshold:
+            # Too old, need a better marker
+            print("b")
+            return False
+
+        reference = self.tags[newest.id]
+        ref_point = Point(reference[0], reference[1], 0.0)
+        res_point = computeTranslation(ref_point, self.frame_pose.orientation)
+        
+        self.frame_pose.position = res_point
+        print("c")
+        return True
 
     def broadcastFrame(self):
         """Broadcasts the whiteboard frame under odom"""
@@ -191,7 +250,8 @@ def main():
     whiteboard_height = 0.5
     whiteboard_depth = 0.1
 
-    corners = {14:"bottom left"}
+    corners = {16: (0, 0),
+               14: (0.5, )}
     dimensions = [whiteboard_width, whiteboard_height, whiteboard_depth]
 
     br = tf.TransformBroadcaster()
