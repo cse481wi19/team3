@@ -8,12 +8,14 @@ import math
 import moveit_commander
 import rospy
 import tf
+import copy
 
 from .arm_joints import ArmJoints
 from .moveit_goal_builder import MoveItGoalBuilder
 from moveit_msgs.msg import MoveItErrorCodes, MoveGroupAction
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 from tf.listener import TransformListener
+from geometry_msgs.msg import Pose
 
 ARM_GROUP_NAME = 'arm'
 JOINT_ACTION_SERVER = 'arm_controller/follow_joint_trajectory'
@@ -290,6 +292,49 @@ class Arm(object):
             return None
 
 
+    def interpolate(self,
+                    points,
+                    step = 0.02):
+        """Adds interpolating points between points in the points list.
+        These points are added to keep the distance between points in the
+        points list smaller than step.
+
+        Args:
+          points: list of poses.
+          step: the distance beyond which an interpolating point is inserted.
+        """
+        def get_dist(a, b):
+            #Get the euclidian distance between points a and b.
+            return math.sqrt((a.position.x - b.position.x)**2 + \
+                   (a.position.y - b.position.y)**2 + \
+                   (a.position.z - b.position.z)**2)
+
+        index = 0
+
+        while not index >= len(points) - 1:
+            dist = get_dist(points[index], points[index + 1])
+            if dist > step:
+                num_points = dist / step
+                num_points = max(int(math.floor(num_points)) - 1, 1)
+                t_step = 1 / float(num_points + 1)
+
+                slope_vec_x = points[index + 1].position.x - points[index].position.x
+                slope_vec_y = points[index + 1].position.y - points[index].position.y
+                slope_vec_z = points[index + 1].position.z - points[index].position.z
+
+                for n in range(1, num_points + 1):
+                    new_point = Pose()
+                    new_point.orientation = copy.deepcopy(points[index].orientation)
+                    new_point.position.x = points[index].position.x + slope_vec_x * t_step * n
+                    new_point.position.y = points[index].position.y + slope_vec_y * t_step * n
+                    new_point.position.z = points[index].position.z + slope_vec_z * t_step * n
+
+                    points.insert(index + n, new_point)
+                
+                index += num_points - 1
+            index += 1
+
+
     def cartesian_path_move(self,
                             group,
                             waypoints,
@@ -329,10 +374,20 @@ class Arm(object):
                     MoveItErrorCodes.FRAME_TRANSFORM_FAILURE)
 
         poses_transformed_poses = [p.pose for p in poses_transformed]
+        self.interpolate(poses_transformed_poses)
+
+        #print(poses_transformed_poses)
 
         # Compute path
-        plan, fraction = group.compute_cartesian_path(
-            poses_transformed_poses, ee_step, jump_threshold, avoid_collisions)
+
+        fraction = 0
+        attempts = 0
+
+        while fraction < 1 and attempts < 5:
+            plan, fraction = group.compute_cartesian_path(
+                poses_transformed_poses, ee_step, jump_threshold, avoid_collisions)
+            attempts += 1
+
         if fraction < 1 and fraction > 0:
             rospy.logerr(
                 'Only able to compute {}% of the path'.format(fraction * 100))

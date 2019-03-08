@@ -53,7 +53,7 @@ def main():
     pose2 = PoseStamped()
     pose2.header.frame_id = 'base_link'
     pose2.pose.position.x = 0.65
-    pose2.pose.position.y = 0.45
+    pose2.pose.position.y = 0.30
     pose2.pose.position.z = 1.25
     pose2.pose.orientation.x = 1
     pose2.pose.orientation.y = 0
@@ -64,13 +64,35 @@ def main():
     pose3 = PoseStamped()
     pose3.header.frame_id = 'base_link'
     pose3.pose.position.x = 0.65
-    pose3.pose.position.y = 0.45
-    pose3.pose.position.z = 1.35
+    pose3.pose.position.y = 0.50
+    pose3.pose.position.z = 1.05
     pose3.pose.orientation.x = 1
     pose3.pose.orientation.y = 0
     pose3.pose.orientation.z = 0
     pose3.pose.orientation.w = 1
     poses.append(pose3)
+
+    pose4 = PoseStamped()
+    pose4.header.frame_id = 'base_link'
+    pose4.pose.position.x = 0.65
+    pose4.pose.position.y = 0.45
+    pose4.pose.position.z = 1.35
+    pose4.pose.orientation.x = 1
+    pose4.pose.orientation.y = 0
+    pose4.pose.orientation.z = 0
+    pose4.pose.orientation.w = 1
+    poses.append(pose4)
+
+    pose5 = PoseStamped()
+    pose5.header.frame_id = 'base_link'
+    pose5.pose.position.x = 0.65
+    pose5.pose.position.y = 0.40
+    pose5.pose.position.z = 1.05
+    pose5.pose.orientation.x = 1
+    pose5.pose.orientation.y = 0
+    pose5.pose.orientation.z = 0
+    pose5.pose.orientation.w = 1
+    poses.append(pose5)
 
     poses.append(pose1)
 
