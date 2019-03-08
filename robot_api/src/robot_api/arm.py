@@ -376,8 +376,6 @@ class Arm(object):
         poses_transformed_poses = [p.pose for p in poses_transformed]
         self.interpolate(poses_transformed_poses)
 
-        #print(poses_transformed_poses)
-
         # Compute path
 
         fraction = 0

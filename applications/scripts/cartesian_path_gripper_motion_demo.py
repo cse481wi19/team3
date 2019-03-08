@@ -64,7 +64,7 @@ def main():
     pose3 = PoseStamped()
     pose3.header.frame_id = 'base_link'
     pose3.pose.position.x = 0.65
-    pose3.pose.position.y = 0.50
+    pose3.pose.position.y = 0.55
     pose3.pose.position.z = 1.05
     pose3.pose.orientation.x = 1
     pose3.pose.orientation.y = 0
@@ -86,7 +86,7 @@ def main():
     pose5 = PoseStamped()
     pose5.header.frame_id = 'base_link'
     pose5.pose.position.x = 0.65
-    pose5.pose.position.y = 0.40
+    pose5.pose.position.y = 0.35
     pose5.pose.position.z = 1.05
     pose5.pose.orientation.x = 1
     pose5.pose.orientation.y = 0
