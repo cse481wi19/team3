@@ -103,16 +103,26 @@ class WhiteboardFrameTracker():
         self.tfl = tfl
         self.marker_pub = marker_pub
         self.dimensions = dimensions
+        self.localize = True
 
         """State variables"""
         self.frame_pose = Pose()
-        self.orientation_filter = [Quaternion()]
+        self.orientation_filter = []
+        self.orientation_filter_maxsize = 10
+        self.orientation_inlier_angle = 0.4 # Approximately pi/8
 
     def loop(self):
-        self.updateOrientationFilter()
-        self.getFramePosition()
+        if self.localize:
+            self.updateOrientationFilter()
+            self.getFramePosition()
+        else:
+            self.updateLocalize()
         self.broadcastFrame()
         self.publishMarker()
+
+    def updateLocalize(self):
+        """Add a topic to subscribe to a bool that lets us re-localize"""
+        pass
 
     def updateOrientationFilter(self):
         """Uses self.poseTracker to include a new change to the whiteboard
@@ -125,7 +135,29 @@ class WhiteboardFrameTracker():
             ps = self.tfl.transformPose('odom', ps)
         except:
             return
-        self.frame_pose.orientation = ps.pose.orientation
+        res = self.insertOrientation(ps.pose.orientation)
+        if res:
+            self.frame_pose.orientation = ps.pose.orientation
+        else:
+            self.frame_pose.orientation = Quaternion()
+
+    def isOutlier(self, orientation):
+        def expandQuat(quat):
+            return [quat.x, quat.y, quat.z, quat.w]
+        orvec = expandQuat(orientation)
+        for q in self.orientation_filter:
+            qvec = expandQuat(q)
+            angle = np.arccos(np.dot(orvec, qvec))
+            if angle > self.orientation_inlier_angle:
+                return True
+        return False
+
+    def insertOrientation(self, orientation):
+        if self.isOutlier(orientation):
+            self.orientation_filter = []
+            return False
+        self.orientation_filter.append(orientation)
+        return True
 
     def getFramePosition(self):
         """Uses self.markerTracker to get the current position for the bottom
