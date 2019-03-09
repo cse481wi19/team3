@@ -9,6 +9,9 @@ from visualization_msgs.msg import MarkerArray, Marker
 import numpy as np
 import math
 from copy import deepcopy
+import actionlib
+
+from applications.msg import LocalizeWhiteboardAction
 
 def wait_for_time():
     """Wait for simulated time to begin.
@@ -148,6 +151,31 @@ class WhiteboardFrameTracker():
         self.pose_filter = []
         self.pose_filter_maxsize = 60
         self.pose_inlier_dist = 0.04 # 10 centimeters
+
+        self._localize()
+
+        """Server setup"""
+        self.server = actionlib.SimpleActionServer('localize_whiteboard',
+                LocalizeWhiteboardAction, self.execute, False)
+        self.server.start()
+
+    def _localize(self):
+        return
+        localized = False
+        while not localized:
+            localized = self.updateOrientationFilter() and self.getFramePosition()
+
+    def execute(self, goal):
+        print("Executing")
+        self.orientation_filter = []
+        self.orientation_filter_maxsize = goal.orientation_filter_size
+        self.orientation_inlier_angle = goal.orientation_inlier_angle
+        self.pose_filter = []
+        self.pose_filter_maxsize = goal.position_filter_size
+        self.pose_inlier_dist = goal.position_inlier_distance
+        self._localize()
+        print("Localized")
+        self.server.set_succeeded()
 
     def loop(self):
         if self.localize:
