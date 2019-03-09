@@ -18,6 +18,7 @@ def makeMarker(m):
     res = Marker()
     res.id = m.id
     res.header = m.header
+    res.header.frame_id = "odom"
     res.type = Marker.CUBE
     res.action = Marker.ADD
     res.pose = m.pose.pose
@@ -34,7 +35,7 @@ def makeMarker(m):
 
 class ArTag(object):
     """Responsible for tracking the pose of a single AR tag"""
-    def __init__(self, tag, n=10):
+    def __init__(self, tag, tfl, n=10):
         self.id = tag.id
         self.tag = deepcopy(tag)
         self.average_pose = deepcopy(tag.pose)
@@ -42,9 +43,11 @@ class ArTag(object):
         self.pose_filter.append(self.average_pose)
         self.n = n
         self.next_index = 1
+        self.tfl = tfl
 
     def update(self, m):
         self.tag = deepcopy(m)
+        m.pose.header.frame_id = "odom"
         new_pose = m.pose
         if len(self.pose_filter) < self.n:
             self.pose_filter.append(new_pose)
@@ -74,27 +77,48 @@ class ArTag(object):
     def get_marker(self):
         return self.tag
 
+    def makeMarker(self):
+        """Creates a marker object from this object"""
+        m = self.tag
+        res = Marker()
+        res.id = m.id
+        res.header = m.header
+        res.header.frame_id = "odom"
+        res.type = Marker.CUBE
+        res.action = Marker.ADD
+        res.pose = m.pose.pose
+
+        res.color.a = 1
+        res.color.r = 0.5
+        res.color.b = 0.5
+        res.color.g = 0.0
+        res.scale.x = 0.08
+        res.scale.y = 0.08
+        res.scale.z = 0.01
+
+        return res
+
 class ArTagTracker(object):
-    def __init__(self, pub, n=10):
+    def __init__(self, pub, tfl, n=10):
         self.markers = []
         self.marker_trackers = {}
         self.pub = pub
         self.n = n
+        self.tfl = tfl
 
     def callback(self, msg):
         for m in msg.markers:
             if self.marker_trackers.get(m.id) is not None:
                 self.marker_trackers[m.id].update(m)
             else:
-                self.marker_trackers[m.id] = ArTag(m, self.n)
-        self.markers = [m.get_marker() for m in self.marker_trackers.values()]
+                self.marker_trackers[m.id] = ArTag(m, self.tfl, self.n)
+        self.markers = [m.makeMarker() for m in self.marker_trackers.values()]
         self.publish()
 
     def publish(self):
         print(self.markers)
-        msg = MarkerArray()
-        msg.markers = [makeMarker(m) for m in self.markers]
-        self.pub.publish(msg)
+        for m in self.markers:
+            self.pub.publish(m)
 
     def get_id(self, tagid):
         for m in self.markers:
@@ -112,8 +136,9 @@ def main():
     rospy.init_node('ar_tag_tracker')
     wait_for_time()
 
-    pub = rospy.Publisher('whiteboard_tags', MarkerArray, queue_size=1)
-    reader = ArTagTracker(pub)
+    pub = rospy.Publisher('whiteboard_tags', Marker, queue_size=1)
+    tfl = tf.TransformListener()
+    reader = ArTagTracker(pub, tfl, n=2)
     sub = rospy.Subscriber('/ar_pose_marker', AlvarMarkers,
             callback=reader.callback) # Subscribe to AR tag poses, use reader.callback
 

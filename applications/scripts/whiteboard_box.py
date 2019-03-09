@@ -18,15 +18,14 @@ def wait_for_time():
 
 class MarkerTracker():
     def __init__(self):
-        self.markers = []
+        self.markers = {}
 
     def callback(self, msg):
-        self.markers = msg.markers
+        self.markers[msg.id] = msg
 
     def get_id(self, mid):
-        for m in self.markers:
-            if m.id == mid:
-                return m
+        if mid in self.markers.keys():
+            return self.markers[mid]
         return None
 
 class PoseTracker():
@@ -104,8 +103,8 @@ def computeTranslation(point, orientation):
 
     p = expandPoint(point)
     res_x = multScalar(p[0], ref_x)
-    res_y = multScalar(p[0], ref_y)
-    res_z = multScalar(p[0], ref_z)
+    res_y = multScalar(p[1], ref_y)
+    res_z = multScalar(p[2], ref_z)
 
     return Point(res_x[0] + res_y[0] + res_z[0],
                  res_x[1] + res_y[1] + res_z[1],
@@ -122,9 +121,9 @@ def makeMarker(dimensions, pose):
     marker.color.b = 0.0
     marker.color.a = 0.5
     marker.pose = Pose()
-    """Shift whiteboard marker position so bottom corner is correctly placed"""
+    """Shift whiteboard marker position so top corner is correctly placed"""
     marker.pose.position.x += dimensions[0] / 2.0
-    marker.pose.position.y -= dimensions[1] / 2.0
+    marker.pose.position.y += dimensions[1] / 2.0
     marker.pose.position.z += dimensions[2] / 2.0
     marker.header.frame_id = 'whiteboard'
     return marker
@@ -146,6 +145,9 @@ class WhiteboardFrameTracker():
         self.orientation_filter_maxsize = 60
         self.orientation_inlier_angle = 0.2 # Approximately pi/16
         self.pose_time_threshold = 10 # seconds beyond which a pose is stale
+        self.pose_filter = []
+        self.pose_filter_maxsize = 60
+        self.pose_inlier_dist = 0.04 # 10 centimeters
 
     def loop(self):
         if self.localize:
@@ -180,8 +182,55 @@ class WhiteboardFrameTracker():
             print("Outlier found")
             self.frame_pose.orientation = Quaternion(0,0,0,1)
         if (len(self.orientation_filter) >= self.orientation_filter_maxsize):
+            print("Localized orientation")
             return True
         return False
+
+    def isOutlier(self, orientation):
+        def expandQuat(quat):
+            return [quat.x, quat.y, quat.z, quat.w]
+        orvec = expandQuat(orientation)
+        for q in self.orientation_filter:
+            qvec = expandQuat(q)
+            angle = np.arccos(np.dot(orvec, qvec))
+            if angle > self.orientation_inlier_angle:
+                return True
+        return False
+
+    def updatePoseFilter(self, position):
+        """Adds position to self.pose_filter if it's not an outlier.
+           Returns true if pose is stable."""
+        if self.isPointOutlier(position):
+            self.pose_filter = [position]
+        else:
+            self.pose_filter.append(position)
+        if (len(self.pose_filter) >= self.pose_filter_maxsize):
+            print("Localized position")
+            return True
+        return False
+
+    def isPointOutlier(self, position):
+        def expandPosition(p):
+            return [p.x, p.y, p.z]
+        pos_vec = expandPosition(position)
+        for p in self.pose_filter:
+            p2_vec = expandPosition(p)
+            for i in range(len(pos_vec)):
+                if (pos_vec[i] - p2_vec[i]) > self.pose_inlier_dist:
+                    return True
+        return False
+
+    def averagePositions(self):
+        def expandPosition(p):
+            return [p.x, p.y, p.z]
+        res_vec = [0.0, 0.0, 0.0]
+        for p in self.pose_filter:
+            p_vec = expandPosition(p)
+            for i in range(len(res_vec)):
+                res_vec[i] += p_vec[i] / len(self.pose_filter)
+
+        return Point(res_vec[0], res_vec[1], res_vec[2])
+
 
     def isOutlier(self, orientation):
         def expandQuat(quat):
@@ -207,26 +256,29 @@ class WhiteboardFrameTracker():
         # TODO implement
         if (len(self.markerTracker.markers) == 0):
             self.frame_pose.position = self.poseTracker.pose.position
-            print("a")
             return False
         newest = self.markerTracker.markers[0]
-        for tag in self.markerTracker.markers:
-            if (tag.header.stamp.to_sec() > newest.header.stamp.to_sec()):
+        for tag in self.markerTracker.markers.values():
+            if (tag.id in self.tags.keys()) and (tag.header.stamp.to_sec() > newest.header.stamp.to_sec()):
                 newest = tag
             print(tag.id, ": ", rospy.Time.now().to_sec() - tag.header.stamp.to_sec())
         age_s = rospy.Time.now().to_sec() - newest.header.stamp.to_sec()
         if age_s > self.pose_time_threshold:
             # Too old, need a better marker
-            print("b")
             return False
 
+        print("Newest id:", newest.id)
         reference = self.tags[newest.id]
         ref_point = Point(reference[0], reference[1], 0.0)
-        res_point = computeTranslation(ref_point, self.frame_pose.orientation)
+        translation = computeTranslation(ref_point, self.frame_pose.orientation)
+        print("Translation:", translation)
+        tag_point = newest.pose.position
         
-        self.frame_pose.position = res_point
-        print("c")
-        return True
+        new_position = Point(tag_point.x - translation.x, tag_point.y - translation.y, tag_point.z - translation.z)
+        if self.updatePoseFilter(new_position):
+            self.frame_pose.position = self.averagePositions()
+            return True
+        return False
 
     def broadcastFrame(self):
         """Broadcasts the whiteboard frame under odom"""
@@ -246,18 +298,24 @@ def main():
     rospy.init_node('whiteboard_box')
     wait_for_time()
 
-    whiteboard_width = 0.5
-    whiteboard_height = 0.5
-    whiteboard_depth = 0.1
+    whiteboard_width = 0.97
+    whiteboard_height = 0.58
+    whiteboard_depth = 0.05
 
-    corners = {16: (0, 0),
-               14: (0.5, )}
+    corners = {16: (0.0, 0.0),
+               14: (0.0, 0.5),
+               0 : (-0.07, -0.06),
+               1 : (0.490, -0.07),
+               2 : (1.02, -0.09),
+               3 : (-0.06, 0.66),
+               4 : (0.50, 0.66),
+               5 : (1.04, 0.63)}
     dimensions = [whiteboard_width, whiteboard_height, whiteboard_depth]
 
     br = tf.TransformBroadcaster()
     tfl = tf.TransformListener()
     markers = MarkerTracker()
-    sub = rospy.Subscriber('whiteboard_tags', MarkerArray,
+    sub = rospy.Subscriber('whiteboard_tags', Marker,
             callback=markers.callback) # Subscribe to AR tag poses, use reader.callback
     pose = PoseTracker()
     sub = rospy.Subscriber('plane_pose', Pose,
