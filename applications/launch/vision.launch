@@ -22,7 +22,7 @@
     <node name="ar_tag_tracker" pkg="applications" type="ar_tag_tracker.py"/>
 
     <!-- Displays the whiteboard box region as a visual marker. -->
-    <!--node name="whiteboard_box" pkg="applications" type="whiteboard_box.py"/-->
+    <node name="whiteboard_box" pkg="applications" type="whiteboard_box.py"/>
 
     <!-- Performs the point cloud segmentation to identify the plane of the whiteboard. -->
     <node name="whiteboard_application" pkg="perception" type="whiteboard_application"/>
