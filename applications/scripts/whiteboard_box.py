@@ -140,7 +140,6 @@ class WhiteboardFrameTracker():
         self.tfl = tfl
         self.marker_pub = marker_pub
         self.dimensions = dimensions
-        self.localize = True
 
         """State variables"""
         self.frame_pose = Pose()
@@ -152,15 +151,18 @@ class WhiteboardFrameTracker():
         self.pose_filter_maxsize = 60
         self.pose_inlier_dist = 0.04 # 10 centimeters
 
-        self._localize()
+        self.localize()
 
         """Server setup"""
         self.server = actionlib.SimpleActionServer('localize_whiteboard',
                 LocalizeWhiteboardAction, self.execute, False)
         self.server.start()
 
-    def _localize(self):
-        return
+        """Timer callback setup"""
+        self.timer = rospy.Timer(rospy.Duration(1.0), self.loop)
+        print("Initialized")
+
+    def localize(self):
         localized = False
         while not localized:
             localized = self.updateOrientationFilter() and self.getFramePosition()
@@ -173,25 +175,13 @@ class WhiteboardFrameTracker():
         self.pose_filter = []
         self.pose_filter_maxsize = goal.position_filter_size
         self.pose_inlier_dist = goal.position_inlier_distance
-        self._localize()
+        self.localize()
         print("Localized")
         self.server.set_succeeded()
 
-    def loop(self):
-        if self.localize:
-            gotOrientation = self.updateOrientationFilter()
-            gotPosition = False
-            if gotOrientation:
-                gotPosition = self.getFramePosition()
-            if gotOrientation and gotPosition:
-                self.localize = False
-        self.updateLocalize()
+    def loop(self, event):
         self.broadcastFrame()
         self.publishMarker()
-
-    def updateLocalize(self):
-        """Add a topic to subscribe to a bool that lets us re-localize"""
-        pass
 
     def updateOrientationFilter(self):
         """Uses self.poseTracker to include a new change to the whiteboard
@@ -207,7 +197,7 @@ class WhiteboardFrameTracker():
         if res:
             self.frame_pose.orientation = ps.pose.orientation
         else:
-            print("Outlier found")
+            print("Orientation outlier found")
             self.frame_pose.orientation = Quaternion(0,0,0,1)
         if (len(self.orientation_filter) >= self.orientation_filter_maxsize):
             print("Localized orientation")
@@ -285,7 +275,7 @@ class WhiteboardFrameTracker():
         if (len(self.markerTracker.markers) == 0):
             self.frame_pose.position = self.poseTracker.pose.position
             return False
-        newest = self.markerTracker.markers[0]
+        newest = self.markerTracker.markers.values()[0]
         for tag in self.markerTracker.markers.values():
             if (tag.id in self.tags.keys()) and (tag.header.stamp.to_sec() > newest.header.stamp.to_sec()):
                 newest = tag
@@ -351,11 +341,9 @@ def main():
 
     pub = rospy.Publisher('whiteboard_region', Marker, queue_size=1)
     wft = WhiteboardFrameTracker(pose, markers, corners, br, pub, tfl, dimensions)
-    r = rospy.Rate(30)
 
-    while 1:
-        r.sleep()
-        wft.loop()
+    rospy.spin()
+
 
 if __name__ == '__main__':
     main()
