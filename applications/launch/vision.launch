@@ -25,7 +25,9 @@
     <node name="whiteboard_box" pkg="applications" type="whiteboard_box.py"/>
 
     <!-- Performs the point cloud segmentation to identify the plane of the whiteboard. -->
-    <node name="whiteboard_application" pkg="perception" type="whiteboard_application"/>
+    <node name="whiteboard_application" pkg="perception" type="whiteboard_application">
+		<remap from="camera_image"  to="$(arg cam_image_topic)" />
+    </node>
 
 
 </launch>

@@ -18,8 +18,8 @@ if __name__ == '__main__':
     # Fill in the goal here
     goal.orientation_filter_size = 60
     goal.position_filter_size = 60
-    goal.orientation_inlier_angle = 0.2
-    goal.position_inlier_distance = 0.04
+    goal.orientation_inlier_angle = 0.15
+    goal.position_inlier_distance = 0.03
     client.send_goal(goal)
     client.wait_for_result(rospy.Duration.from_sec(5.0))
     print("Done")
