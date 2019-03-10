@@ -29,5 +29,7 @@
 		<remap from="camera_image"  to="$(arg cam_image_topic)" />
     </node>
 
+    <!-- Enables aligning the head to face the whiteboard. -->
+    <node name="head_aim" pkg="applications" type="head_aim.py"/>
 
 </launch>
