@@ -6,7 +6,7 @@
 
 	<arg name="cam_image_topic" default="/head_camera/depth_registered/points" />
 	<arg name="cam_info_topic" default="/head_camera/rgb/camera_info" />
-	<arg name="output_frame" default="/base_link" />
+	<arg name="output_frame" default="/odom" />
 
 	<node name="ar_track_alvar" pkg="ar_track_alvar" type="individualMarkers" respawn="false" output="screen">
 		<param name="marker_size"           type="double" value="$(arg marker_size)" />
@@ -25,7 +25,11 @@
     <node name="whiteboard_box" pkg="applications" type="whiteboard_box.py"/>
 
     <!-- Performs the point cloud segmentation to identify the plane of the whiteboard. -->
-    <node name="whiteboard_application" pkg="perception" type="whiteboard_application"/>
+    <node name="whiteboard_application" pkg="perception" type="whiteboard_application">
+		<remap from="camera_image"  to="$(arg cam_image_topic)" />
+    </node>
 
+    <!-- Enables aligning the head to face the whiteboard. -->
+    <node name="head_aim" pkg="applications" type="head_aim.py"/>
 
 </launch>

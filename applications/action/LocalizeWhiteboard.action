@@ -1,0 +1,12 @@
+# Goal Parameters
+uint32 orientation_filter_size
+uint32 orientation_inlier_angle
+uint32 position_filter_size
+uint32 position_inlier_distance
+---
+# Goal Result
+geometry_msgs/Pose pose
+---
+# Feedback message
+bool orientation_found
+bool position_found

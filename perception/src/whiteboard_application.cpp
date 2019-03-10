@@ -9,8 +9,9 @@
 int main(int argc, char **argv) {
   ros::init(argc, argv, "whiteboard_application");
   ros::NodeHandle nh;
+  std::string cloud_in = "camera_image";
   //std::string cloud_in = "/head_camera/depth_registered/points";
-  std::string cloud_in = "/mock_point_cloud";
+  //std::string cloud_in = "/mock_point_cloud";
   
   ros::Publisher whiteboard_pub =
       nh.advertise<sensor_msgs::PointCloud2>("whiteboard_cloud", 1, true);
