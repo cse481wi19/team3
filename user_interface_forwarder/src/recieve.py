@@ -9,7 +9,7 @@ from geometry_msgs.msg import Point
 
 def main():
     s = socket.socket()
-    s.bind(("link.cs.washington.edu",7898))
+    s.bind(("astro.cs.washington.edu",7898))
     s.listen(10) # Accepts up to 10 connections.file_number = 1# Continually accept new files
 
     svgpub = rospy.Publisher('user_interface_forwarder/Path', Path, queue_size=10)
