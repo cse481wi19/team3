@@ -15,11 +15,11 @@ import robot_api.constants as constants
 from visualization_msgs.msg import Marker
 from copy import deepcopy
 
-DRAW_DISTANCE = -0.29
+PREDRAW_Z_OFFSET = constants.PREDRAW_Z_OFFSET
 BOARD_X_LEN = constants.WHITEBOARD_WIDTH #0.64
 BOARD_Y_LEN = constants.WHITEBOARD_HEIGHT #0.36
-BOARD_X_OFFSET = 0.05
-BOARD_Y_OFFSET = 0.1
+BOARD_X_OFFSET = 0.0
+BOARD_Y_OFFSET = 0.0
 BOARD_Z_OFFSET = constants.WHITEBOARD_Z_OFFSET #-0.3
 
 def wait_for_time():
@@ -45,18 +45,20 @@ def makeMarker(mid, pose):
     return marker
 
 class DrawClass():
-    def __init__(self, pub, tfl, group, restpose):
+    def __init__(self, pub, tfl, group, restpose, arm):
         self.pub = pub
         self.tfl = tfl
         self.group = group
         self.restpose = restpose
+        self.arm = arm
 
     def draw_callback(self, msg):
-        arm = robot_api.Arm()
         paths = msg.path
         path_to_execute = []
         #path = paths[0]
         mid = 1
+
+        # Add first postdraw point
         point = paths[0]
         x = point.x
         y = point.y
@@ -64,12 +66,8 @@ class DrawClass():
         pose.header.frame_id = 'whiteboard'
         pose.pose.position.x = x * BOARD_X_LEN + BOARD_X_OFFSET
         pose.pose.position.y = y * BOARD_Y_LEN + BOARD_Y_OFFSET
-        pose.pose.position.z = DRAW_DISTANCE + BOARD_Z_OFFSET
+        pose.pose.position.z = PREDRAW_Z_OFFSET + BOARD_Z_OFFSET
         quat = tft.quaternion_about_axis(-np.pi / 2.0, (0, 1, 0))
-        self.restpose.pose.orientation.x = quat[0]
-        self.restpose.pose.orientation.y = quat[1]
-        self.restpose.pose.orientation.z = quat[2]
-        self.restpose.pose.orientation.w = quat[3]
         pose.pose.orientation.x = quat[0]
         pose.pose.orientation.y = quat[1]
         pose.pose.orientation.z = quat[2]
@@ -87,7 +85,7 @@ class DrawClass():
             pose.header.frame_id = 'whiteboard'
             pose.pose.position.x = x * BOARD_X_LEN + BOARD_X_OFFSET
             pose.pose.position.y = y * BOARD_Y_LEN + BOARD_Y_OFFSET
-            pose.pose.position.z = DRAW_DISTANCE
+            pose.pose.position.z = BOARD_Z_OFFSET
             quat = tft.quaternion_about_axis(-np.pi / 2.0, (0, 1, 0))
             pose.pose.orientation.x = quat[0]
             pose.pose.orientation.y = quat[1]
@@ -106,6 +104,27 @@ class DrawClass():
 
             path_to_execute.append(pose)
 
+        # Add last postdraw point
+        point = paths[-1]
+        x = point.x
+        y = point.y
+        pose = PoseStamped()
+        pose.header.frame_id = 'whiteboard'
+        pose.pose.position.x = x * BOARD_X_LEN + BOARD_X_OFFSET
+        pose.pose.position.y = y * BOARD_Y_LEN + BOARD_Y_OFFSET
+        pose.pose.position.z = PREDRAW_Z_OFFSET + BOARD_Z_OFFSET
+        quat = tft.quaternion_about_axis(-np.pi / 2.0, (0, 1, 0))
+        pose.pose.orientation.x = quat[0]
+        pose.pose.orientation.y = quat[1]
+        pose.pose.orientation.z = quat[2]
+        pose.pose.orientation.w = quat[3]
+        try:
+            pose = self.tfl.transformPose('base_link', pose)
+        except:
+            print("Couldn't convert point firstpose")
+        path_to_execute.append(pose)
+
+
         print("Completed path with ", len(path_to_execute), " points")
 
         try:
@@ -114,15 +133,15 @@ class DrawClass():
             print("Couldn't convert firstpose")
             return
 
-        arm.move_to_pose(firstpose)
+        self.arm.move_to_pose(firstpose)
         print("Moved to firstpose")
-        arm.move_to_pose(path_to_execute[0])
+        self.arm.move_to_pose(path_to_execute[0])
         print("Moved to path_to_execute[0]")
-        error = arm.cartesian_path_move(self.group, path_to_execute, jump_threshold=2.0)
+        error = self.arm.cartesian_path_move(self.group, path_to_execute, jump_threshold=2.0)
         if error is not None:
             rospy.logerr(error)
         print("Completed cartesian_path_move")
-        arm.move_to_pose(firstpose)
+        self.arm.move_to_pose(firstpose)
         rospy.sleep(0.25)
 
 def main():
@@ -131,18 +150,22 @@ def main():
     wait_for_time()
     moveit_robot = moveit_commander.RobotCommander()
     group = moveit_commander.MoveGroupCommander('arm')
+    arm = robot_api.Arm()
 
     # Set the torso height before running this demo.
     torso = robot_api.Torso()
     torso.set_height(0.4)
 
     RestPose = PoseStamped()
-    RestPose.header.frame_id = 'whiteboard'
-    RestPose.pose.position = Point(0.4, 0.4, -0.65)
+    RestPose.header.frame_id = 'base_link'
+    RestPose.pose.position = Point(0.45, -0.5, 1.25)
+    RestPose.pose.orientation = Quaternion(0.0, 0.0, 0.0, 1.0)
+
+    arm.move_to_pose(RestPose)
 
     tfl = tf.TransformListener()
     pub = rospy.Publisher('drawing_points', Marker, queue_size=100)
-    drawer = DrawClass(pub, tfl, group, RestPose)
+    drawer = DrawClass(pub, tfl, group, RestPose, arm)
     
     path_sub = rospy.Subscriber('/user_interface_forwarder/Path', Path, drawer.draw_callback)
 

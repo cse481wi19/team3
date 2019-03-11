@@ -62,6 +62,9 @@ def stabilizeOrientation(orientation):
     if new_z[0] < 0:
         reflect = tft.reflection_matrix([0, 0, 0], new_z)
 
+    new_z[2] = 0
+    new_z = tft.unit_vector(new_z)
+
     goal_x = tft.unit_vector(np.cross(new_z, old_z))
     angle = np.arccos(np.dot(new_x, goal_x))
     rot = tft.rotation_matrix(angle, new_z)
@@ -143,6 +146,7 @@ class WhiteboardFrameTracker():
         self.dimensions = dimensions
 
         """State variables"""
+        self.actual_pose = Pose()
         self.frame_pose = Pose()
         self.orientation_filter = []
         self.orientation_filter_maxsize = 60
@@ -167,6 +171,7 @@ class WhiteboardFrameTracker():
         localized = False
         while not localized:
             localized = self.updateOrientationFilter() and self.getFramePosition()
+        self.actual_pose = deepcopy(self.frame_pose)
 
     def execute(self, goal):
         print("Executing")
@@ -301,15 +306,15 @@ class WhiteboardFrameTracker():
 
     def broadcastFrame(self):
         """Broadcasts the whiteboard frame under odom"""
-        self.br.sendTransform((self.frame_pose.position.x, self.frame_pose.position.y, self.frame_pose.position.z),
-                         (self.frame_pose.orientation.x, self.frame_pose.orientation.y, self.frame_pose.orientation.z, self.frame_pose.orientation.w),
+        self.br.sendTransform((self.actual_pose.position.x, self.actual_pose.position.y, self.actual_pose.position.z),
+                         (self.actual_pose.orientation.x, self.actual_pose.orientation.y, self.actual_pose.orientation.z, self.actual_pose.orientation.w),
                          rospy.Time.now(),
                          "whiteboard",
                          "odom")
 
     def publishMarker(self):
         """Publishes the representation of the whiteboard region"""
-        m = makeMarker(self.dimensions, self.frame_pose)
+        m = makeMarker(self.dimensions, self.actual_pose)
         self.marker_pub.publish(m)
  
 
