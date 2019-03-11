@@ -161,7 +161,7 @@ def main():
     RestPose.pose.position = Point(0.45, -0.5, 1.25)
     RestPose.pose.orientation = Quaternion(0.0, 0.0, 0.0, 1.0)
 
-    arm.move_to_pose(RestPose)
+    #arm.move_to_pose(RestPose)
 
     tfl = tf.TransformListener()
     pub = rospy.Publisher('drawing_points', Marker, queue_size=100)
