@@ -10,6 +10,7 @@ import numpy as np
 import math
 from copy import deepcopy
 import actionlib
+import robot_api.constants as constants
 
 from applications.msg import LocalizeWhiteboardAction
 
@@ -316,10 +317,11 @@ def main():
     rospy.init_node('whiteboard_box')
     wait_for_time()
 
-    whiteboard_width = 0.97
-    whiteboard_height = 0.58
+    whiteboard_width = constants.WHITEBOARD_WIDTH #0.97
+    whiteboard_height = constants.WHITEBOARD_HEIGHT #0.58
     whiteboard_depth = 0.05
 
+    """
     corners = {16: (0.0, 0.0),
                14: (0.0, 0.5),
                0 : (-0.07, -0.06),
@@ -328,6 +330,8 @@ def main():
                3 : (-0.06, 0.66),
                4 : (0.50, 0.66),
                5 : (1.04, 0.63)}
+    """
+    corners = constants.CORNERS # {0 : (-0.1, -0.1)}
     dimensions = [whiteboard_width, whiteboard_height, whiteboard_depth]
 
     br = tf.TransformBroadcaster()

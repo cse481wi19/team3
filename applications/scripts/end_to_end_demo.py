@@ -11,17 +11,16 @@ import sys
 import tf.transformations as tft
 import tf
 import numpy as np
+import robot_api.constants as constants
 from visualization_msgs.msg import Marker
 from copy import deepcopy
 
 DRAW_DISTANCE = -0.29
-BOARD_X_LEN = 0.64
-BOARD_Y_LEN = 0.36
+BOARD_X_LEN = constants.WHITEBOARD_WIDTH #0.64
+BOARD_Y_LEN = constants.WHITEBOARD_HEIGHT #0.36
 BOARD_X_OFFSET = 0.05
 BOARD_Y_OFFSET = 0.1
-BOARD_Z_OFFSET = -0.3
-whiteboard_width = 0.97
-whiteboard_height = 0.58
+BOARD_Z_OFFSET = constants.WHITEBOARD_Z_OFFSET #-0.3
 
 def wait_for_time():
     """Wait for simulated time to begin.
@@ -128,7 +127,7 @@ class DrawClass():
 
 def main():
     moveit_commander.roscpp_initialize(sys.argv)
-    rospy.init_node('straight_gripper_motion_demo')
+    rospy.init_node('end_to_end_demo')
     wait_for_time()
     moveit_robot = moveit_commander.RobotCommander()
     group = moveit_commander.MoveGroupCommander('arm')

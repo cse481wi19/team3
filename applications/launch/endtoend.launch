@@ -1,0 +1,40 @@
+<launch>
+
+	<arg name="marker_size" default="5.6" />
+	<arg name="max_new_marker_error" default="0.08" />
+	<arg name="max_track_error" default="0.2" />
+
+	<arg name="cam_image_topic" default="/head_camera/depth_registered/points" />
+	<arg name="cam_info_topic" default="/head_camera/rgb/camera_info" />
+	<arg name="output_frame" default="/odom" />
+
+	<node name="ar_track_alvar" pkg="ar_track_alvar" type="individualMarkers" respawn="false" output="screen">
+		<param name="marker_size"           type="double" value="$(arg marker_size)" />
+		<param name="max_new_marker_error"  type="double" value="$(arg max_new_marker_error)" />
+		<param name="max_track_error"       type="double" value="$(arg max_track_error)" />
+		<param name="output_frame"          type="string" value="$(arg output_frame)" />
+
+		<remap from="camera_image"  to="$(arg cam_image_topic)" />
+		<remap from="camera_info"   to="$(arg cam_info_topic)" />
+	</node>
+
+    <!-- Enables persistent ar_tag republishing (for when the tags go out of view). -->
+    <node name="ar_tag_tracker" pkg="applications" type="ar_tag_tracker.py"/>
+
+    <!-- Displays the whiteboard box region as a visual marker. -->
+    <node name="whiteboard_box" pkg="applications" type="whiteboard_box.py"/>
+
+    <!-- Performs the point cloud segmentation to identify the plane of the whiteboard. -->
+    <node name="whiteboard_application" pkg="perception" type="whiteboard_application">
+		<remap from="camera_image"  to="$(arg cam_image_topic)" />
+    </node>
+
+    <!-- Enables aligning the head to face the whiteboard. -->
+    <include file="$(find robot_api)/launch/move_group.launch"/>
+
+    <node name="head_aim" pkg="applications" type="head_aim.py"/>
+
+    <node name="ui_forwarder" pkg="user_interface_forwarder" type="recieve.py"/>
+
+    <node name="end_to_end_demo" pkg="applications" type="end_to_end_demo.py"/>
+</launch>
