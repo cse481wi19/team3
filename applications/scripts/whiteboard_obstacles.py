@@ -15,7 +15,7 @@ def wait_for_time():
     while rospy.Time().now().to_sec() == 0:
         pass
 
-def ObstacleServer():
+class ObstacleServer():
     def __init__(self, planning_scene, tfl):
         self.planning_scene = planning_scene
         self.tfl = tfl
@@ -27,28 +27,29 @@ def ObstacleServer():
         name = goal.obstacle
         if name == "tray":
             if goal.add:
-                addTray(self, goal)
+                self.addTray(goal)
             else:
-                removeTray(self, goal)
+                self.removeTray(goal)
         if name == "wall":
             if goal.add:
-                addWall(self, goal)
+                self.addWall(goal)
             else:
-                removeWall(self, goal)
+                self.removeWall(goal)
         if name == "block":
             if goal.add:
-                addBlock(self, goal)
+                self.addBlock(goal)
             else:
-                removeBlock(self, goal)
+                self.removeBlock(goal)
+        self.planning_scene.waitForSync()
         self.server.set_succeeded()
 
     def addWall(self, goal):
         self.removeWall(goal)
         p = SolidPrimitive()
         p.type = SolidPrimitive.BOX
-        p.dimensions = [10.0, 3.0, 0.1]
+        p.dimensions = [3.0, 3.0, 0.1]
         res_pose = self.getWhiteboardPose()
-        planning_scene.addSolidPrimitive('wall', p, res_pose)
+        self.planning_scene.addSolidPrimitive('wall', p, res_pose)
 
     def addBlock(self, goal):
         self.removeBlock(goal)
@@ -56,27 +57,27 @@ def ObstacleServer():
         frames_okay_to_collide_with = [
             'gripper_link', 'l_gripper_finger_link', 'r_gripper_finger_link'        
         ]
-        planning_scene.attachBox('block', 0.13, 0.05, 0.05, 0.0, 0.0, 0,
+        self.planning_scene.attachBox('block', 0.13, 0.05, 0.05, 0.0, 0.0, 0,
                 frame_attached_to, frames_okay_to_collide_with)
 
     def addTray(self, goal):
         self.removeTray(goal)
         tray = SolidPrimitive()
         tray.type = SolidPrimitive.BOX
-        tray.dimensions = [10.0, 0.85, 0.2]
+        tray.dimensions = [3.0, 0.85, 0.2]
         pose = self.getWhiteboardPose()
         pose.position.z = tray.dimensions[1] / 2.0
         pose.position.x -= tray.dimensions[2] / 2.0
-        planning_scene.addSolidPrimitive('tray', tray, pose)
+        self.planning_scene.addSolidPrimitive('tray', tray, pose)
 
     def removeTray(self, goal):
-        planning_scene.removeCollisionObject('tray')
+        self.planning_scene.removeCollisionObject('tray')
 
     def removeWall(self, goal):
-        planning_scene.removeCollisionObject('wall')
+        self.planning_scene.removeCollisionObject('wall')
 
     def removeBlock(self, goal):
-        planning_scene.removeAttachedObject('block')
+        self.planning_scene.removeAttachedObject('block')
 
     def getWhiteboardPose(self):
         box_pose = PoseStamped()

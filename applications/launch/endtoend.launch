@@ -37,4 +37,6 @@
     <node name="ui_forwarder" pkg="user_interface_forwarder" type="recieve.py"/>
 
     <node name="end_to_end_demo" pkg="applications" type="end_to_end_demo.py"/>
+
+    <node name="whiteboard_obstacles" pkg="applications" type="whiteboard_obstacles.py"/>
 </launch>

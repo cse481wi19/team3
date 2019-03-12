@@ -15,6 +15,7 @@ import robot_api.constants as constants
 from visualization_msgs.msg import Marker
 from copy import deepcopy
 
+import actionlib
 from applications.msg import WhiteboardObstaclesGoal, WhiteboardObstaclesAction
 
 PREDRAW_Z_OFFSET = constants.PREDRAW_Z_OFFSET
@@ -142,6 +143,7 @@ class DrawClass():
         self.arm.move_to_pose(path_to_execute[0])
         rospy.sleep(0.25)
         self.removeAllScenes()
+        rospy.sleep(1.0)
 
         print("Moved to path_to_execute[0]")
         error = self.arm.cartesian_path_move(self.group, path_to_execute, jump_threshold=2.0)
@@ -184,6 +186,13 @@ def main():
     moveit_commander.roscpp_initialize(sys.argv)
     rospy.init_node('end_to_end_demo')
     wait_for_time()
+
+    def on_shutdown():
+        group.stop()
+        moveit_commander.roscpp_shutdown()
+
+    rospy.on_shutdown(on_shutdown)
+
     moveit_robot = moveit_commander.RobotCommander()
     group = moveit_commander.MoveGroupCommander('arm')
     arm = robot_api.Arm()
@@ -197,21 +206,12 @@ def main():
     RestPose.pose.position = Point(0.45, -0.5, 1.25)
     RestPose.pose.orientation = Quaternion(0.0, 0.0, 0.0, 1.0)
     
-    path_sub = rospy.Subscriber('/user_interface_forwarder/Path', Path, drawer.draw_callback)
-
     client = actionlib.SimpleActionClient('set_whiteboard_obstacles', WhiteboardObstaclesAction)
-
-    def on_shutdown():
-        group.stop()
-        moveit_commander.roscpp_shutdown()
-
-    rospy.on_shutdown(on_shutdown)
-
-    #arm.move_to_pose(RestPose)
-
     tfl = tf.TransformListener()
     pub = rospy.Publisher('drawing_points', Marker, queue_size=100)
     drawer = DrawClass(pub, tfl, group, RestPose, arm, client)
+
+    path_sub = rospy.Subscriber('/user_interface_forwarder/Path', Path, drawer.draw_callback)
 
     rospy.spin()
 
