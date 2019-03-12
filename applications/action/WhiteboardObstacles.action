@@ -1,0 +1,7 @@
+# Goal Parameters
+string obstacle
+bool add
+---
+# Goal Result
+---
+# Feedback message

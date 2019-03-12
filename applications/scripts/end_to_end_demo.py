@@ -15,6 +15,8 @@ import robot_api.constants as constants
 from visualization_msgs.msg import Marker
 from copy import deepcopy
 
+from applications.msg import WhiteboardObstaclesGoal, WhiteboardObstaclesAction
+
 PREDRAW_Z_OFFSET = constants.PREDRAW_Z_OFFSET
 BOARD_X_LEN = constants.WHITEBOARD_WIDTH #0.64
 BOARD_Y_LEN = constants.WHITEBOARD_HEIGHT #0.36
@@ -45,12 +47,13 @@ def makeMarker(mid, pose):
     return marker
 
 class DrawClass():
-    def __init__(self, pub, tfl, group, restpose, arm):
+    def __init__(self, pub, tfl, group, restpose, arm, client):
         self.pub = pub
         self.tfl = tfl
         self.group = group
         self.restpose = restpose
         self.arm = arm
+        self.client = client
 
     def draw_callback(self, msg):
         paths = msg.path
@@ -132,17 +135,50 @@ class DrawClass():
         except:
             print("Couldn't convert firstpose")
             return
-
+        
+        self.addAllScenes()
         self.arm.move_to_pose(firstpose)
         print("Moved to firstpose")
         self.arm.move_to_pose(path_to_execute[0])
+        rospy.sleep(0.25)
+        self.removeAllScenes()
+
         print("Moved to path_to_execute[0]")
         error = self.arm.cartesian_path_move(self.group, path_to_execute, jump_threshold=2.0)
+        rospy.sleep(0.25)
+
+        self.addAllScenes()
         if error is not None:
             rospy.logerr(error)
         print("Completed cartesian_path_move")
         self.arm.move_to_pose(firstpose)
         rospy.sleep(0.25)
+
+    def addAllScenes(self):
+        goal = WhiteboardObstaclesGoal()
+        goal.obstacle = "tray"
+        goal.add = True
+        self.client.send_goal(deepcopy(goal))
+        self.client.wait_for_result(rospy.Duration.from_sec(5.0))
+        goal.obstacle = "wall"
+        self.client.send_goal(deepcopy(goal))
+        self.client.wait_for_result(rospy.Duration.from_sec(5.0))
+        goal.obstacle = "block"
+        self.client.send_goal(deepcopy(goal))
+        self.client.wait_for_result(rospy.Duration.from_sec(5.0))
+
+    def removeAllScenes(self):
+        goal = WhiteboardObstaclesGoal()
+        goal.obstacle = "tray"
+        goal.add = False
+        self.client.send_goal(deepcopy(goal))
+        self.client.wait_for_result(rospy.Duration.from_sec(5.0))
+        goal.obstacle = "wall"
+        self.client.send_goal(deepcopy(goal))
+        self.client.wait_for_result(rospy.Duration.from_sec(5.0))
+        goal.obstacle = "block"
+        self.client.send_goal(deepcopy(goal))
+        self.client.wait_for_result(rospy.Duration.from_sec(5.0))
 
 def main():
     moveit_commander.roscpp_initialize(sys.argv)
@@ -160,20 +196,22 @@ def main():
     RestPose.header.frame_id = 'base_link'
     RestPose.pose.position = Point(0.45, -0.5, 1.25)
     RestPose.pose.orientation = Quaternion(0.0, 0.0, 0.0, 1.0)
-
-    #arm.move_to_pose(RestPose)
-
-    tfl = tf.TransformListener()
-    pub = rospy.Publisher('drawing_points', Marker, queue_size=100)
-    drawer = DrawClass(pub, tfl, group, RestPose, arm)
     
     path_sub = rospy.Subscriber('/user_interface_forwarder/Path', Path, drawer.draw_callback)
+
+    client = actionlib.SimpleActionClient('set_whiteboard_obstacles', WhiteboardObstaclesAction)
 
     def on_shutdown():
         group.stop()
         moveit_commander.roscpp_shutdown()
 
     rospy.on_shutdown(on_shutdown)
+
+    #arm.move_to_pose(RestPose)
+
+    tfl = tf.TransformListener()
+    pub = rospy.Publisher('drawing_points', Marker, queue_size=100)
+    drawer = DrawClass(pub, tfl, group, RestPose, arm, client)
 
     rospy.spin()
 

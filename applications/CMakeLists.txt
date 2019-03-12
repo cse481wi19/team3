@@ -64,6 +64,7 @@ add_action_files(
   FILES
   LocalizeWhiteboard.action
   AimHead.action
+  WhiteboardObstacles.action
 )
 
 # Generate added messages and services with any dependencies listed here
