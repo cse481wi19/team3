@@ -187,10 +187,10 @@ class DrawClass():
         pose.pose.orientation.z = quat[2]
         pose.pose.orientation.w = quat[3]
         try:
-            pose = self.tfl.transformPose('base_link', pose)
+            finaloffset = self.tfl.transformPose('base_link', pose)
         except:
             print("Couldn't convert point firstpose")
-        path_to_execute.append(pose)
+            return
 
         if pose.pose.position.y > 0:
             endRestpose.pose.position.y = -endRestpose.pose.position.y
@@ -212,9 +212,9 @@ class DrawClass():
         self.obs.addWall()
         self.obs.addTray()
         self.obs.addBlock()
-        self.arm.move_to_pose(firstpose)
+        self.arm.move_to_pose(firstpose, replan=True)
         print("Moved to firstpose")
-        self.arm.move_to_pose(path_to_execute[0])
+        self.arm.move_to_pose(path_to_execute[0], replan=True)
         rospy.sleep(0.25)
         self.obs.removeTray()
         self.obs.removeBlock()
@@ -222,15 +222,17 @@ class DrawClass():
 
         print("Moved to path_to_execute[0]")
         error = self.arm.cartesian_path_move(self.group, path_to_execute, jump_threshold=2.0)
-        rospy.sleep(0.25)
+        if error is not None:
+            rospy.logerr(error)
+        rospy.sleep(1.0)
 
         self.obs.addWall()
         self.obs.addTray()
         self.obs.addBlock()
-        if error is not None:
-            rospy.logerr(error)
+        self.arm.move_to_pose(finaloffset, replan=True)
+        rospy.sleep(0.25)
         print("Completed cartesian_path_move")
-        self.arm.move_to_pose(endpose)
+        self.arm.move_to_pose(endpose, replan=True)
         rospy.sleep(0.25)
 
     def addAllScenes(self):
