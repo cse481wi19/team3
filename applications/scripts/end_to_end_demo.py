@@ -117,14 +117,23 @@ class DrawClass():
         self.obs.addTray()
         self.obs.addBlock()
 
-    def draw_callback_wrapper(self, msg):
-        if not self.draw_callback(msg):
-            msg.path.reverse()
-            self.draw_callback(msg)
+        self.point_cap = 30
 
-    def draw_callback(self, msg):
-        success = True
+    def draw_callback_wrapper(self, msg):
         paths = msg.path
+        start = 0
+        while start < len(paths):
+            mypath = deepcopy(paths[start : min(start + self.point_cap, len(paths) - 1)])
+            start += self.point_cap - 2
+            if len(mypath) > 1:
+                res = self.draw_callback(mypath)
+                # Optionally: Attempt to fill in the rest from the reverse direction
+                if False and res < 1.0:
+                    mypath.reverse()
+                    self.draw_callback(mypath, needed_fraction=(1.0 - res))
+
+    def draw_callback(self, paths, needed_fraction=1.0):
+        fraction = 0.0
         path_to_execute = []
         #path = paths[0]
         mid = 1
@@ -232,9 +241,11 @@ class DrawClass():
 
         error = self.arm.cartesian_path_move(self.group, path_to_execute,
                     jump_threshold=2.0, num_attempts=2)
-        if error is not None:
-            success = False
+        if not isinstance(error, float):
+            fraction = 0.0
             rospy.logerr(error)
+        else:
+            fraction = error
         rospy.sleep(0.25)
 
         #self.obs.addWall()
@@ -242,7 +253,7 @@ class DrawClass():
         #self.obs.addBlock()
         self.arm.move_to_pose(finaloffset, replan=True, tolerance=0.01)
         self.arm.move_to_pose(endpose, replan=True, tolerance=0.1)
-        return success
+        return fraction
 
     def addAllScenes(self):
         goal = WhiteboardObstaclesGoal()

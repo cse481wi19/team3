@@ -341,7 +341,8 @@ class Arm(object):
                             ee_step=0.025,
                             jump_threshold=0.0,
                             avoid_collisions=True,
-                            num_attempts=5):
+                            num_attempts=5,
+                            min_fraction=1.0):
         """Moves the end-effector smoothly through a series of waypoints.
 
         Args:
@@ -354,6 +355,8 @@ class Arm(object):
             configuration space allowed between two poses in the path. Used to
             prevent "jumps" in the IK solution.
           avoid_collisions: bool. Whether to check for obstacles or not.
+          num_attempts: int. How many times to retry planning the path
+          min_fraction: float. The cutoff for an acceptable planned path.
 
         Returns:
             string describing the error if an error occurred, else None.
@@ -380,11 +383,11 @@ class Arm(object):
         # Compute path
 
         plan = None
-        fraction = 0
+        fraction = 0.0
         attempts = 0
 
 
-        while fraction < 1 and attempts < num_attempts:
+        while fraction < min_fraction and attempts < num_attempts:
             curplan, curfraction = group.compute_cartesian_path(
                 poses_transformed_poses, ee_step, jump_threshold, avoid_collisions)
             if curfraction > fraction:
@@ -392,7 +395,7 @@ class Arm(object):
                 plan = curplan
             attempts += 1
 
-        if fraction < 1 and fraction > 0:
+        if fraction < 1.0 and fraction > 0.0:
             rospy.logerr(
                 'Only able to compute {}% of the path'.format(fraction * 100))
         if fraction == 0:
@@ -403,10 +406,8 @@ class Arm(object):
         result = group.execute(plan, wait=True)
         if not result:
             return moveit_error_string(MoveItErrorCodes.INVALID_MOTION_PLAN)
-        elif fraction < 1:
-            return "ooh, try again"
         else:
-            return None
+            return fraction
 
 
     def check_pose(self,
