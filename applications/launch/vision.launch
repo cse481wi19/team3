@@ -32,4 +32,6 @@
     <!-- Enables aligning the head to face the whiteboard. -->
     <node name="head_aim" pkg="applications" type="head_aim.py"/>
 
+    <!-- Responsible for adding obstacles to the planning scene. -->
+    <node name="whiteboard_obstacles" pkg="applications" type="whiteboard_obstacles.py"/>
 </launch>
