@@ -340,7 +340,8 @@ class Arm(object):
                             waypoints,
                             ee_step=0.025,
                             jump_threshold=0.0,
-                            avoid_collisions=True):
+                            avoid_collisions=True,
+                            num_attempts=5):
         """Moves the end-effector smoothly through a series of waypoints.
 
         Args:
@@ -383,7 +384,7 @@ class Arm(object):
         attempts = 0
 
 
-        while fraction < 1 and attempts < 5:
+        while fraction < 1 and attempts < num_attempts:
             curplan, curfraction = group.compute_cartesian_path(
                 poses_transformed_poses, ee_step, jump_threshold, avoid_collisions)
             if curfraction > fraction:
@@ -402,6 +403,8 @@ class Arm(object):
         result = group.execute(plan, wait=True)
         if not result:
             return moveit_error_string(MoveItErrorCodes.INVALID_MOTION_PLAN)
+        elif fraction < 1:
+            return "ooh, try again"
         else:
             return None
 

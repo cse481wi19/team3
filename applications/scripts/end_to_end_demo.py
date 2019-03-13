@@ -117,7 +117,13 @@ class DrawClass():
         self.obs.addTray()
         self.obs.addBlock()
 
+    def draw_callback_wrapper(self, msg):
+        if not self.draw_callback(msg):
+            msg.path.reverse()
+            self.draw_callback(msg)
+
     def draw_callback(self, msg):
+        success = True
         paths = msg.path
         path_to_execute = []
         #path = paths[0]
@@ -195,7 +201,6 @@ class DrawClass():
             path_to_execute.append(finaloffset)
         except:
             print("Couldn't convert point firstpose")
-            return
 
         if pose.pose.position.y > 0:
             endRestpose.pose.position.y = -endRestpose.pose.position.y
@@ -206,13 +211,11 @@ class DrawClass():
             firstpose = self.tfl.transformPose('base_link', startRestpose)
         except:
             print("Couldn't convert firstpose")
-            return
 
         try:
             endpose = self.tfl.transformPose('base_link', endRestpose)
         except:
             print("Couldn't convert firstpose")
-            return
         
         #self.obs.addWall()
         #self.obs.addTray()
@@ -225,10 +228,12 @@ class DrawClass():
         #self.obs.removeWall()
         #self.obs.removeTray()
         #self.obs.removeBlock()
-        rospy.sleep(2.0)
+        rospy.sleep(1.0)
 
-        error = self.arm.cartesian_path_move(self.group, path_to_execute, jump_threshold=2.0)
+        error = self.arm.cartesian_path_move(self.group, path_to_execute,
+                    jump_threshold=2.0, num_attempts=2)
         if error is not None:
+            success = False
             rospy.logerr(error)
         rospy.sleep(0.25)
 
@@ -237,6 +242,7 @@ class DrawClass():
         #self.obs.addBlock()
         self.arm.move_to_pose(finaloffset, replan=True, tolerance=0.01)
         self.arm.move_to_pose(endpose, replan=True, tolerance=0.1)
+        return success
 
     def addAllScenes(self):
         goal = WhiteboardObstaclesGoal()
@@ -329,7 +335,7 @@ def main():
     pub = rospy.Publisher('drawing_points', Marker, queue_size=100)
     drawer = DrawClass(pub, tfl, group, RestPose, arm, serv)
 
-    path_sub = rospy.Subscriber('/user_interface_forwarder/Path', Path, drawer.draw_callback)
+    path_sub = rospy.Subscriber('/user_interface_forwarder/Path', Path, drawer.draw_callback_wrapper)
 
     rospy.spin()
 
