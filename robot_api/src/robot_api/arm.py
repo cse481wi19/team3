@@ -378,12 +378,17 @@ class Arm(object):
 
         # Compute path
 
+        plan = None
         fraction = 0
         attempts = 0
 
+
         while fraction < 1 and attempts < 5:
-            plan, fraction = group.compute_cartesian_path(
+            curplan, curfraction = group.compute_cartesian_path(
                 poses_transformed_poses, ee_step, jump_threshold, avoid_collisions)
+            if curfraction > fraction:
+                fraction = curfraction
+                plan = curplan
             attempts += 1
 
         if fraction < 1 and fraction > 0:

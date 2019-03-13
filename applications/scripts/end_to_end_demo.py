@@ -113,6 +113,10 @@ class DrawClass():
         self.arm = arm
         self.obs = obs
 
+        self.obs.addWall()
+        self.obs.addTray()
+        self.obs.addBlock()
+
     def draw_callback(self, msg):
         paths = msg.path
         path_to_execute = []
@@ -188,6 +192,7 @@ class DrawClass():
         pose.pose.orientation.w = quat[3]
         try:
             finaloffset = self.tfl.transformPose('base_link', pose)
+            path_to_execute.append(finaloffset)
         except:
             print("Couldn't convert point firstpose")
             return
@@ -209,28 +214,29 @@ class DrawClass():
             print("Couldn't convert firstpose")
             return
         
-        self.obs.addWall()
-        self.obs.addTray()
-        self.obs.addBlock()
-        #self.arm.move_to_pose(firstpose, replan=True)
-        self.arm.move_to_pose(path_to_execute[0], replan=True)
+        #self.obs.addWall()
+        #self.obs.addTray()
+        #self.obs.addBlock()
+        self.arm.move_to_pose(firstpose, replan=True, tolerance=0.1)
+        self.arm.move_to_pose(path_to_execute[0], replan=True, tolerance=0.01)
         rospy.sleep(0.25)
 
         # Remove tray/block
-        self.obs.removeTray()
-        self.obs.removeBlock()
-        rospy.sleep(1.0)
+        #self.obs.removeWall()
+        #self.obs.removeTray()
+        #self.obs.removeBlock()
+        rospy.sleep(2.0)
 
         error = self.arm.cartesian_path_move(self.group, path_to_execute, jump_threshold=2.0)
         if error is not None:
             rospy.logerr(error)
         rospy.sleep(0.25)
 
-        self.obs.addWall()
-        self.obs.addTray()
-        self.obs.addBlock()
-        self.arm.move_to_pose(finaloffset, replan=True)
-        #self.arm.move_to_pose(endpose, replan=True)
+        #self.obs.addWall()
+        #self.obs.addTray()
+        #self.obs.addBlock()
+        self.arm.move_to_pose(finaloffset, replan=True, tolerance=0.01)
+        self.arm.move_to_pose(endpose, replan=True, tolerance=0.1)
 
     def addAllScenes(self):
         goal = WhiteboardObstaclesGoal()
