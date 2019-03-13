@@ -142,14 +142,14 @@ class DrawClass():
         print("Moved to firstpose")
         self.arm.move_to_pose(path_to_execute[0])
         rospy.sleep(0.25)
-        self.removeAllScenes()
+        self.removeTray()
         rospy.sleep(1.0)
 
         print("Moved to path_to_execute[0]")
         error = self.arm.cartesian_path_move(self.group, path_to_execute, jump_threshold=2.0)
         rospy.sleep(0.25)
 
-        self.addAllScenes()
+        self.addTray()
         if error is not None:
             rospy.logerr(error)
         print("Completed cartesian_path_move")
@@ -166,6 +166,34 @@ class DrawClass():
         self.client.send_goal(deepcopy(goal))
         self.client.wait_for_result(rospy.Duration.from_sec(5.0))
         goal.obstacle = "block"
+        self.client.send_goal(deepcopy(goal))
+        self.client.wait_for_result(rospy.Duration.from_sec(5.0))
+
+    def removeBlock(self):
+        goal = WhiteboardObstaclesGoal()
+        goal.obstacle = "block"
+        goal.add = False
+        self.client.send_goal(deepcopy(goal))
+        self.client.wait_for_result(rospy.Duration.from_sec(5.0))
+
+    def addBlock(self):
+        goal = WhiteboardObstaclesGoal()
+        goal.obstacle = "block"
+        goal.add = True
+        self.client.send_goal(deepcopy(goal))
+        self.client.wait_for_result(rospy.Duration.from_sec(5.0))
+
+    def removeTray(self):
+        goal = WhiteboardObstaclesGoal()
+        goal.obstacle = "tray"
+        goal.add = False
+        self.client.send_goal(deepcopy(goal))
+        self.client.wait_for_result(rospy.Duration.from_sec(5.0))
+
+    def addTray(self):
+        goal = WhiteboardObstaclesGoal()
+        goal.obstacle = "tray"
+        goal.add = True
         self.client.send_goal(deepcopy(goal))
         self.client.wait_for_result(rospy.Duration.from_sec(5.0))
 
