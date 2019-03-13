@@ -6,6 +6,7 @@ from user_interface_forwarder.msg import Path
 from geometry_msgs.msg import Pose, Quaternion, Point, PoseStamped
 import robot_api
 import moveit_commander
+from moveit_python import PlanningSceneInterface
 import rospy
 import sys
 import tf.transformations as tft
@@ -14,9 +15,10 @@ import numpy as np
 import robot_api.constants as constants
 from visualization_msgs.msg import Marker
 from copy import deepcopy
+from shape_msgs.msg import SolidPrimitive
 
-import actionlib
-from applications.msg import WhiteboardObstaclesGoal, WhiteboardObstaclesAction
+#import actionlib
+#from applications.msg import WhiteboardObstaclesGoal, WhiteboardObstaclesAction
 
 PREDRAW_Z_OFFSET = constants.PREDRAW_Z_OFFSET
 BOARD_X_LEN = constants.WHITEBOARD_WIDTH #0.64
@@ -47,14 +49,69 @@ def makeMarker(mid, pose):
     marker.header.frame_id = 'whiteboard'
     return marker
 
+class ObstacleServer():
+    def __init__(self, planning_scene, tfl):
+        self.planning_scene = planning_scene
+        self.tfl = tfl
+
+    def addWall(self):
+        self.removeWall()
+        p = SolidPrimitive()
+        p.type = SolidPrimitive.BOX
+        p.dimensions = [3.0, 3.0, 0.1]
+        res_pose = self.getWhiteboardPose()
+        self.planning_scene.addSolidPrimitive('wall', p, res_pose)
+
+    def addBlock(self):
+        self.removeBlock()
+        frame_attached_to = 'gripper_link'
+        frames_okay_to_collide_with = [
+            'gripper_link', 'l_gripper_finger_link', 'r_gripper_finger_link'        
+        ]
+        self.planning_scene.attachBox('block', 0.13, 0.05, 0.05, 0.0, 0.0, 0,
+                frame_attached_to, frames_okay_to_collide_with)
+
+    def addTray(self):
+        self.removeTray()
+        tray = SolidPrimitive()
+        tray.type = SolidPrimitive.BOX
+        tray.dimensions = [3.0, 0.85, 0.2]
+        pose = self.getWhiteboardPose()
+        pose.position.z = tray.dimensions[1] / 2.0
+        pose.position.x -= tray.dimensions[2] / 2.0
+        self.planning_scene.addSolidPrimitive('tray', tray, pose)
+
+    def removeTray(self):
+        self.planning_scene.removeCollisionObject('tray')
+
+    def removeWall(self):
+        self.planning_scene.removeCollisionObject('wall')
+
+    def removeBlock(self):
+        self.planning_scene.removeAttachedObject('block')
+
+    def getWhiteboardPose(self):
+        box_pose = PoseStamped()
+        box_pose.header.frame_id = "whiteboard"
+        box_pose.pose.orientation.w = 1.0
+
+        res_pose = None
+        while res_pose is None:
+            try:
+                res_pose = self.tfl.transformPose('base_link', box_pose)
+            except:
+                rospy.sleep(1)
+
+        return res_pose.pose
+
 class DrawClass():
-    def __init__(self, pub, tfl, group, restpose, arm, client):
+    def __init__(self, pub, tfl, group, restpose, arm, obs):
         self.pub = pub
         self.tfl = tfl
         self.group = group
         self.restpose = restpose
         self.arm = arm
-        self.client = client
+        self.obs = obs
 
     def draw_callback(self, msg):
         paths = msg.path
@@ -80,7 +137,14 @@ class DrawClass():
             pose = self.tfl.transformPose('base_link', pose)
         except:
             print("Couldn't convert point firstpose")
+
         path_to_execute.append(pose)
+
+        startRestpose = deepcopy(self.restpose)
+        endRestpose = deepcopy(self.restpose)
+
+        if pose.pose.position.y > 0:
+            startRestpose.pose.position.y = -startRestpose.pose.position.y
 
         for point in paths:
             x = point.x
@@ -128,32 +192,45 @@ class DrawClass():
             print("Couldn't convert point firstpose")
         path_to_execute.append(pose)
 
+        if pose.pose.position.y > 0:
+            endRestpose.pose.position.y = -endRestpose.pose.position.y
 
         print("Completed path with ", len(path_to_execute), " points")
 
         try:
-            firstpose = self.tfl.transformPose('base_link', self.restpose)
+            firstpose = self.tfl.transformPose('base_link', startRestpose)
+        except:
+            print("Couldn't convert firstpose")
+            return
+
+        try:
+            endpose = self.tfl.transformPose('base_link', endRestpose)
         except:
             print("Couldn't convert firstpose")
             return
         
-        self.addAllScenes()
+        self.obs.addWall()
+        self.obs.addTray()
+        self.obs.addBlock()
         self.arm.move_to_pose(firstpose)
         print("Moved to firstpose")
         self.arm.move_to_pose(path_to_execute[0])
         rospy.sleep(0.25)
-        self.removeTray()
+        self.obs.removeTray()
+        self.obs.removeBlock()
         rospy.sleep(1.0)
 
         print("Moved to path_to_execute[0]")
         error = self.arm.cartesian_path_move(self.group, path_to_execute, jump_threshold=2.0)
         rospy.sleep(0.25)
 
-        self.addTray()
+        self.obs.addWall()
+        self.obs.addTray()
+        self.obs.addBlock()
         if error is not None:
             rospy.logerr(error)
         print("Completed cartesian_path_move")
-        self.arm.move_to_pose(firstpose)
+        self.arm.move_to_pose(endpose)
         rospy.sleep(0.25)
 
     def addAllScenes(self):
@@ -221,6 +298,15 @@ def main():
 
     rospy.on_shutdown(on_shutdown)
 
+    tfl = tf.TransformListener()
+    planning_scene = PlanningSceneInterface('base_link')
+    planning_scene.clear()
+    planning_scene.removeCollisionObject('wall')
+    planning_scene.removeCollisionObject('tray')
+    planning_scene.removeAttachedObject('block')
+
+    serv = ObstacleServer(planning_scene, tfl)
+
     moveit_robot = moveit_commander.RobotCommander()
     group = moveit_commander.MoveGroupCommander('arm')
     arm = robot_api.Arm()
@@ -231,13 +317,12 @@ def main():
 
     RestPose = PoseStamped()
     RestPose.header.frame_id = 'base_link'
-    RestPose.pose.position = Point(0.45, -0.5, 1.25)
-    RestPose.pose.orientation = Quaternion(0.0, 0.0, 0.0, 1.0)
+    RestPose.pose.position = Point(0.25, -0.65, 1.25)
+    RestPose.pose.orientation = Quaternion(0.707, 0.0, 0.707, 0.0)
     
-    client = actionlib.SimpleActionClient('set_whiteboard_obstacles', WhiteboardObstaclesAction)
-    tfl = tf.TransformListener()
+    #client = actionlib.SimpleActionClient('set_whiteboard_obstacles', WhiteboardObstaclesAction)
     pub = rospy.Publisher('drawing_points', Marker, queue_size=100)
-    drawer = DrawClass(pub, tfl, group, RestPose, arm, client)
+    drawer = DrawClass(pub, tfl, group, RestPose, arm, serv)
 
     path_sub = rospy.Subscriber('/user_interface_forwarder/Path', Path, drawer.draw_callback)
 
