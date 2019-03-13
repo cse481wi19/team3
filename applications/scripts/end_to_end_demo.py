@@ -212,28 +212,25 @@ class DrawClass():
         self.obs.addWall()
         self.obs.addTray()
         self.obs.addBlock()
-        self.arm.move_to_pose(firstpose, replan=True)
-        print("Moved to firstpose")
+        #self.arm.move_to_pose(firstpose, replan=True)
         self.arm.move_to_pose(path_to_execute[0], replan=True)
         rospy.sleep(0.25)
+
+        # Remove tray/block
         self.obs.removeTray()
         self.obs.removeBlock()
         rospy.sleep(1.0)
 
-        print("Moved to path_to_execute[0]")
         error = self.arm.cartesian_path_move(self.group, path_to_execute, jump_threshold=2.0)
         if error is not None:
             rospy.logerr(error)
-        rospy.sleep(1.0)
+        rospy.sleep(0.25)
 
         self.obs.addWall()
         self.obs.addTray()
         self.obs.addBlock()
         self.arm.move_to_pose(finaloffset, replan=True)
-        rospy.sleep(0.25)
-        print("Completed cartesian_path_move")
-        self.arm.move_to_pose(endpose, replan=True)
-        rospy.sleep(0.25)
+        #self.arm.move_to_pose(endpose, replan=True)
 
     def addAllScenes(self):
         goal = WhiteboardObstaclesGoal()
