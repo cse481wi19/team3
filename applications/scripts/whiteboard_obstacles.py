@@ -105,11 +105,11 @@ def main():
     planning_scene.removeCollisionObject('tray')
     planning_scene.removeAttachedObject('block')
 
+    """
     serv = ObstacleServer(planning_scene, tfl)
 
     rospy.spin()
 
-    """
     box_pose = PoseStamped()
     box_pose.header.frame_id = "whiteboard"
     box_pose.pose.orientation.w = 1.0

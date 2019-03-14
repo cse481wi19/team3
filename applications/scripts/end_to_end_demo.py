@@ -123,12 +123,12 @@ class DrawClass():
         paths = msg.path
         start = 0
         while start < len(paths):
-            mypath = deepcopy(paths[start : min(start + self.point_cap, len(paths) - 1)])
+            mypath = deepcopy(paths[start : min(start + self.point_cap, len(paths))])
             start += self.point_cap - 2
             if len(mypath) > 1:
                 res = self.draw_callback(mypath)
                 # Optionally: Attempt to fill in the rest from the reverse direction
-                if False and res < 1.0:
+                if False and res < 0.9:
                     mypath.reverse()
                     self.draw_callback(mypath, needed_fraction=(1.0 - res))
 
